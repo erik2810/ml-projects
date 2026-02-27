@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Graph ML Lab — Interactive demos for GNNs, conditional graph generation, and graph variational autoencoders.">
+  <title>Graph ML Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <a href="#" class="nav-brand">Graph ML Lab</a>
+      <ul class="nav-links">
+        <li><a href="#gnn">GNN</a></li>
+        <li><a href="#generator">Generator</a></li>
+        <li><a href="#vae">VAE</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="container">
+      <h1>Graph ML Lab</h1>
+      <p class="tagline">From-scratch implementations of graph neural networks, conditional graph generation, and variational autoencoders on small social network skeletons.</p>
+      <div class="hero-links">
+        <a href="https://github.com" class="btn btn-primary">View Source</a>
+        <a href="#gnn" class="btn btn-outline">Explore Demos</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GNN Section -->
+  <section id="gnn">
+    <div class="container">
+      <span class="section-label">01 — GNN</span>
+      <h2>Graph Neural Network</h2>
+      <p class="section-desc">
+        Semi-supervised node classification on Zachary's Karate Club graph.
+        All message passing layers implemented from scratch using only PyTorch.
+      </p>
+
+      <div class="gnn-layout fade-in">
+        <div class="gnn-graph-panel graph-container" id="gnn-viz" style="min-height:440px"></div>
+
+        <div class="gnn-info-panel">
+          <div class="message-controls">
+            <button class="btn btn-primary" id="btn-message-pass">Run Message Passing</button>
+            <button class="btn btn-outline" id="btn-reset-gnn">Reset</button>
+          </div>
+
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#6366f1"></span> Mr. Hi's group</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Officer's group</span>
+          </div>
+
+          <div class="metrics-grid fade-in fade-in-delay-1">
+            <div class="card metric-card">
+              <span class="metric-value" id="m-nodes">34</span>
+              <span class="metric-label">Nodes</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-edges">78</span>
+              <span class="metric-label">Edges</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-acc">90.5%</span>
+              <span class="metric-label">Test Acc</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-f1">0.897</span>
+              <span class="metric-label">F1 Macro</span>
+            </div>
+          </div>
+
+          <div class="card fade-in fade-in-delay-2">
+            <h4>Architecture</h4>
+            <div class="code-block">
+<span class="keyword">class</span> GCNLayer(nn.Module):
+    <span class="comment"># Kipf & Welling (ICLR 2017)</span>
+    <span class="keyword">def</span> forward(self, x, adj):
+        a_hat = normalize_adj(adj)
+        <span class="keyword">return</span> a_hat @ x @ self.weight</div>
+          </div>
+
+          <div class="chart-container fade-in fade-in-delay-3">
+            <h4>Training Curve</h4>
+            <div class="chart-area" id="gnn-chart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Generator Section -->
+  <section id="generator">
+    <div class="container">
+      <span class="section-label">02 — Generator</span>
+      <h2>Conditional Graph Generator</h2>
+      <p class="section-desc">
+        A conditional VAE that generates small graphs matching target structural properties.
+        Trained on mixtures of Erdos-Renyi and Barabasi-Albert random graphs.
+      </p>
+
+      <div class="generator-controls fade-in">
+        <div class="control-group">
+          <label for="ctrl-nodes">Nodes</label>
+          <input type="range" id="ctrl-nodes" min="5" max="15" value="10" step="1">
+          <span class="range-value" id="ctrl-nodes-val">10</span>
+        </div>
+        <div class="control-group">
+          <label for="ctrl-density">Density</label>
+          <input type="range" id="ctrl-density" min="0.1" max="0.6" value="0.3" step="0.05">
+          <span class="range-value" id="ctrl-density-val">0.30</span>
+        </div>
+        <div class="control-group">
+          <label for="ctrl-type">Graph type</label>
+          <select id="ctrl-type">
+            <option value="all">All types</option>
+            <option value="er">Erdos-Renyi</option>
+            <option value="ba">Barabasi-Albert</option>
+            <option value="ws">Watts-Strogatz</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-gen-new">Generate</button>
+      </div>
+
+      <div class="graph-grid fade-in" id="gen-grid"></div>
+    </div>
+  </section>
+
+  <!-- VAE Section -->
+  <section id="vae">
+    <div class="container">
+      <span class="section-label">03 — VAE & Diffusion</span>
+      <h2>Graph VAE on Social Network Skeletons</h2>
+      <p class="section-desc">
+        Variational autoencoder that learns a latent representation of small graphs,
+        enabling smooth interpolation and generation of novel network structures.
+      </p>
+
+      <div class="vae-layout">
+        <!-- Architecture diagram -->
+        <div class="architecture-panel fade-in">
+          <h3>Model Architecture</h3>
+          <div class="arch-diagram">
+            <div class="arch-block input-block">
+              <div class="arch-block-title">Input</div>
+              <div class="arch-block-desc">Graph (A, X)</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block encoder-block">
+              <div class="arch-block-title">Encoder</div>
+              <div class="arch-block-desc">2-layer GCN<br>+ mean readout</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block latent-block">
+              <div class="arch-block-title">Latent</div>
+              <div class="arch-block-desc">&mu;, &sigma;<br>z ~ N(&mu;, &sigma;&sup2;)</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block decoder-block">
+              <div class="arch-block-title">Decoder</div>
+              <div class="arch-block-desc">MLP<br>&rarr; node embeds</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block output-block">
+              <div class="arch-block-title">Output</div>
+              <div class="arch-block-desc">&sigma;(ZZ&top;)<br>= adj matrix</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interpolation panel -->
+        <div class="interpolation-panel fade-in">
+          <h3>Latent Space Interpolation</h3>
+          <div class="interpolation-slider-wrap">
+            <label>Ring graph</label>
+            <input type="range" id="interp-slider" min="0" max="5" step="1" value="0">
+            <span class="alpha-value" id="interp-alpha">0.0</span>
+            <label>Star graph</label>
+          </div>
+          <div class="interpolation-graph" id="interp-viz"></div>
+          <div class="interpolation-endpoints">
+            <span class="endpoint-label"><span class="endpoint-dot" style="background:#6366f1"></span> Source (ring)</span>
+            <span class="endpoint-label"><span class="endpoint-dot" style="background:#f59e0b"></span> Target (star)</span>
+          </div>
+        </div>
+
+        <!-- Training curve -->
+        <div class="chart-container fade-in">
+          <h4>VAE Training Loss</h4>
+          <div class="chart-area" id="vae-chart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-col">
+          <h4>References</h4>
+          <ul>
+            <li><a href="https://arxiv.org/abs/1609.02907">Kipf & Welling, 2017 (GCN)</a></li>
+            <li><a href="https://arxiv.org/abs/1710.10903">Velickovic et al., 2018 (GAT)</a></li>
+            <li><a href="https://arxiv.org/abs/1802.03480">Simonovsky & Komodakis, 2018 (GraphVAE)</a></li>
+            <li><a href="https://arxiv.org/abs/1611.07308">Kipf & Welling, 2016 (VGAE)</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Built With</h4>
+          <ul>
+            <li>PyTorch (no NumPy)</li>
+            <li>FastAPI</li>
+            <li>D3.js</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-citation">
+        <div class="code-block">@misc{graphmlab,
+  title  = {Graph ML Lab: From-scratch GNN, Generator, and VAE},
+  year   = {2025},
+  url    = {https://github.com/yourusername/ml-projects}
+}</div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>MIT License</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="js/demo.js"></script>
+</body>
+</html>
