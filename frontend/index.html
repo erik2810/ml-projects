@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Graph ML Research Explorer — GNN training, conditional graph generation, generative graph models, and spatial 3D tree generation.">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>Graph ML Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/main.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <svg class="brand-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="18" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="12" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="8" y1="7" x2="11" y2="16" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+          <line x1="16" y1="7" x2="13" y2="16" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+          <line x1="8.5" y1="6" x2="15.5" y2="6" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
+        </svg>
+        <h1 class="brand-title">Graph ML Research</h1>
+      </div>
+      <nav class="tab-nav" role="tablist" aria-label="Main sections">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-gnn" data-tab="gnn">
+          GNN Explorer
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-generator" data-tab="generator">
+          Graph Generator
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-vae" data-tab="vae">
+          VAE / Diffusion
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-spatial" data-tab="spatial">
+          Spatial 3D
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- ======== GNN Explorer Panel ======== -->
+    <section id="panel-gnn" class="panel active" role="tabpanel" aria-labelledby="tab-gnn">
+      <div class="panel-header">
+        <h2>GNN Explorer</h2>
+        <p class="panel-desc">Load the Zachary Karate Club graph, train a graph neural network, and inspect per-node predictions.</p>
+      </div>
+
+      <div class="panel-grid gnn-layout">
+        <!-- Controls -->
+        <div class="card controls-card">
+          <h3 class="card-title">Configuration</h3>
+
+          <div class="control-group">
+            <button id="btn-load-graph" class="btn btn-primary" type="button">Load Karate Club</button>
+            <span id="load-status" class="status-text"></span>
+          </div>
+
+          <fieldset class="fieldset">
+            <legend>Model</legend>
+            <div class="field">
+              <label for="gnn-layer-type">Layer type</label>
+              <select id="gnn-layer-type">
+                <option value="GCN">GCN</option>
+                <option value="GAT">GAT</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="gnn-hidden-dim">Hidden dim</label>
+              <input id="gnn-hidden-dim" type="number" value="16" min="4" max="256" step="4">
+            </div>
+            <div class="field">
+              <label for="gnn-num-layers">Layers</label>
+              <input id="gnn-num-layers" type="number" value="2" min="1" max="6">
+            </div>
+            <div class="field">
+              <label for="gnn-lr">Learning rate</label>
+              <input id="gnn-lr" type="number" value="0.01" min="0.0001" max="1" step="0.001">
+            </div>
+            <div class="field">
+              <label for="gnn-epochs">Epochs</label>
+              <input id="gnn-epochs" type="number" value="200" min="10" max="2000" step="10">
+            </div>
+          </fieldset>
+
+          <div class="control-group">
+            <button id="btn-train-gnn" class="btn btn-accent" type="button" disabled>Train Model</button>
+          </div>
+
+          <fieldset class="fieldset" id="predict-fieldset" disabled>
+            <legend>Prediction</legend>
+            <div class="field">
+              <label for="gnn-node-ids">Node IDs <span class="field-hint">(comma-separated)</span></label>
+              <input id="gnn-node-ids" type="text" placeholder="0, 1, 2, 33">
+            </div>
+            <button id="btn-predict-gnn" class="btn btn-secondary" type="button">Predict</button>
+          </fieldset>
+
+          <output id="gnn-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <!-- Visualization -->
+        <div class="card viz-card">
+          <h3 class="card-title">Graph</h3>
+          <div id="gnn-graph-container" class="graph-container" aria-label="Graph visualization"></div>
+        </div>
+
+        <!-- Training curve + prediction output -->
+        <div class="card metrics-card">
+          <h3 class="card-title">Training</h3>
+          <div id="gnn-loss-container" class="chart-container"></div>
+          <div id="gnn-predictions" class="predictions-output"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Graph Generator Panel ======== -->
+    <section id="panel-generator" class="panel" role="tabpanel" aria-labelledby="tab-generator" hidden>
+      <div class="panel-header">
+        <h2>Conditional Graph Generator</h2>
+        <p class="panel-desc">Set target structural properties and generate graphs matching those conditions.</p>
+      </div>
+
+      <div class="panel-grid generator-layout">
+        <div class="card controls-card">
+          <h3 class="card-title">Training</h3>
+          <fieldset class="fieldset">
+            <legend>Hyperparameters</legend>
+            <div class="field">
+              <label for="gen-hidden-dim">Hidden dim</label>
+              <input id="gen-hidden-dim" type="number" value="64" min="16" max="512" step="16">
+            </div>
+            <div class="field">
+              <label for="gen-lr">Learning rate</label>
+              <input id="gen-lr" type="number" value="0.001" min="0.0001" max="0.1" step="0.0001">
+            </div>
+            <div class="field">
+              <label for="gen-epochs">Epochs</label>
+              <input id="gen-epochs" type="number" value="500" min="50" max="5000" step="50">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-train-gen" class="btn btn-accent" type="button">Train Generator</button>
+          </div>
+          <div id="gen-loss-container" class="chart-container chart-container--small"></div>
+          <output id="gen-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <div class="card conditions-card">
+          <h3 class="card-title">Conditions</h3>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <label for="cond-nodes">Num nodes</label>
+              <output id="cond-nodes-val" class="slider-value">20</output>
+            </div>
+            <input id="cond-nodes" type="range" min="5" max="50" value="20" step="1">
+          </div>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <label for="cond-density">Edge density</label>
+              <output id="cond-density-val" class="slider-value">0.30</output>
+            </div>
+            <input id="cond-density" type="range" min="0.05" max="0.95" value="0.30" step="0.05">
+          </div>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <label for="cond-clustering">Clustering coeff.</label>
+              <output id="cond-clustering-val" class="slider-value">0.40</output>
+            </div>
+            <input id="cond-clustering" type="range" min="0.0" max="1.0" value="0.40" step="0.05">
+          </div>
+
+          <div class="field">
+            <label for="gen-num-samples">Samples to generate</label>
+            <input id="gen-num-samples" type="number" value="6" min="1" max="24" step="1">
+          </div>
+
+          <div class="control-group">
+            <button id="btn-generate" class="btn btn-primary" type="button">Generate Graphs</button>
+          </div>
+        </div>
+
+        <div class="card viz-card viz-card--wide">
+          <h3 class="card-title">Generated Graphs</h3>
+          <div id="gen-graph-grid" class="graph-grid" aria-label="Generated graph gallery"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== VAE / Diffusion Panel ======== -->
+    <section id="panel-vae" class="panel" role="tabpanel" aria-labelledby="tab-vae" hidden>
+      <div class="panel-header">
+        <h2>Graph VAE &amp; Diffusion</h2>
+        <p class="panel-desc">Train generative models over graph distributions. Generate new samples or interpolate in latent space.</p>
+      </div>
+
+      <div class="panel-grid vae-layout">
+        <!-- VAE column -->
+        <div class="card controls-card">
+          <h3 class="card-title">Variational Autoencoder</h3>
+          <fieldset class="fieldset">
+            <legend>VAE params</legend>
+            <div class="field">
+              <label for="vae-latent-dim">Latent dim</label>
+              <input id="vae-latent-dim" type="number" value="8" min="2" max="64" step="2">
+            </div>
+            <div class="field">
+              <label for="vae-hidden-dim">Hidden dim</label>
+              <input id="vae-hidden-dim" type="number" value="32" min="8" max="256" step="8">
+            </div>
+            <div class="field">
+              <label for="vae-lr">Learning rate</label>
+              <input id="vae-lr" type="number" value="0.001" min="0.0001" max="0.1" step="0.0001">
+            </div>
+            <div class="field">
+              <label for="vae-epochs">Epochs</label>
+              <input id="vae-epochs" type="number" value="300" min="50" max="3000" step="50">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-train-vae" class="btn btn-accent" type="button">Train VAE</button>
+          </div>
+          <div id="vae-loss-container" class="chart-container chart-container--small"></div>
+
+          <hr class="divider">
+
+          <div class="field">
+            <label for="vae-gen-samples">Samples</label>
+            <input id="vae-gen-samples" type="number" value="4" min="1" max="16">
+          </div>
+          <div class="control-group">
+            <button id="btn-gen-vae" class="btn btn-primary" type="button">Generate from VAE</button>
+          </div>
+
+          <output id="vae-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <!-- Diffusion column -->
+        <div class="card controls-card">
+          <h3 class="card-title">Diffusion Model</h3>
+          <fieldset class="fieldset">
+            <legend>Diffusion params</legend>
+            <div class="field">
+              <label for="diff-timesteps">Timesteps</label>
+              <input id="diff-timesteps" type="number" value="100" min="10" max="1000" step="10">
+            </div>
+            <div class="field">
+              <label for="diff-hidden-dim">Hidden dim</label>
+              <input id="diff-hidden-dim" type="number" value="64" min="16" max="256" step="16">
+            </div>
+            <div class="field">
+              <label for="diff-lr">Learning rate</label>
+              <input id="diff-lr" type="number" value="0.0003" min="0.00001" max="0.01" step="0.00001">
+            </div>
+            <div class="field">
+              <label for="diff-epochs">Epochs</label>
+              <input id="diff-epochs" type="number" value="500" min="50" max="5000" step="50">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-train-diff" class="btn btn-accent" type="button">Train Diffusion</button>
+          </div>
+          <div id="diff-loss-container" class="chart-container chart-container--small"></div>
+
+          <hr class="divider">
+
+          <div class="field">
+            <label for="diff-gen-samples">Samples</label>
+            <input id="diff-gen-samples" type="number" value="4" min="1" max="16">
+          </div>
+          <div class="control-group">
+            <button id="btn-gen-diff" class="btn btn-primary" type="button">Generate from Diffusion</button>
+          </div>
+
+          <output id="diff-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <!-- Interpolation -->
+        <div class="card controls-card">
+          <h3 class="card-title">Latent Interpolation</h3>
+          <p class="card-desc">Interpolate between two training graphs in VAE latent space.</p>
+          <div class="field">
+            <label for="interp-idx-a">Graph index A</label>
+            <input id="interp-idx-a" type="number" value="0" min="0">
+          </div>
+          <div class="field">
+            <label for="interp-idx-b">Graph index B</label>
+            <input id="interp-idx-b" type="number" value="5" min="0">
+          </div>
+          <div class="field">
+            <label for="interp-steps">Steps</label>
+            <input id="interp-steps" type="number" value="5" min="3" max="12">
+          </div>
+          <div class="control-group">
+            <button id="btn-interpolate" class="btn btn-secondary" type="button">Interpolate</button>
+          </div>
+        </div>
+
+        <!-- Visualization area -->
+        <div class="card viz-card viz-card--full">
+          <h3 class="card-title">Outputs</h3>
+          <div id="vae-graph-grid" class="graph-grid" aria-label="VAE / Diffusion output gallery"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Spatial 3D Panel ======== -->
+    <section id="panel-spatial" class="panel" role="tabpanel" aria-labelledby="tab-spatial" hidden>
+      <div class="panel-header">
+        <h2>Spatial 3D Tree Generation</h2>
+        <p class="panel-desc">Generate and visualize 3D tree morphologies (botanical trees, neuron-like structures). Joint discrete structure + continuous 3D positions.</p>
+      </div>
+
+      <div class="panel-grid spatial-layout">
+        <!-- Training controls -->
+        <div class="card controls-card">
+          <h3 class="card-title">Data &amp; Training</h3>
+
+          <fieldset class="fieldset">
+            <legend>Data</legend>
+            <div class="field">
+              <label for="sp-data-type">Morphology type</label>
+              <select id="sp-data-type">
+                <option value="tree">Branching tree</option>
+                <option value="neuron">Neuron morphology</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sp-num-nodes">Nodes per tree</label>
+              <input id="sp-num-nodes" type="number" value="30" min="10" max="100" step="5">
+            </div>
+            <div class="field">
+              <label for="sp-num-train">Training samples</label>
+              <input id="sp-num-train" type="number" value="50" min="10" max="500" step="10">
+            </div>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend>Model</legend>
+            <div class="field">
+              <label for="sp-model-type">Generator</label>
+              <select id="sp-model-type">
+                <option value="vae">Spatial Tree VAE</option>
+                <option value="diffusion">Joint Diffusion</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sp-hidden-dim">Hidden dim</label>
+              <input id="sp-hidden-dim" type="number" value="64" min="16" max="256" step="16">
+            </div>
+            <div class="field">
+              <label for="sp-epochs">Epochs</label>
+              <input id="sp-epochs" type="number" value="30" min="5" max="500" step="5">
+            </div>
+            <div class="field">
+              <label for="sp-lr">Learning rate</label>
+              <input id="sp-lr" type="number" value="0.001" min="0.0001" max="0.01" step="0.0001">
+            </div>
+          </fieldset>
+
+          <div class="control-group">
+            <button id="btn-train-spatial" class="btn btn-accent" type="button">Train Model</button>
+          </div>
+          <div id="sp-loss-container" class="chart-container chart-container--small"></div>
+
+          <output id="sp-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <!-- Generation controls -->
+        <div class="card controls-card">
+          <h3 class="card-title">Generation</h3>
+
+          <div class="field">
+            <label for="sp-gen-samples">Samples</label>
+            <input id="sp-gen-samples" type="number" value="4" min="1" max="12">
+          </div>
+          <div class="control-group">
+            <button id="btn-gen-spatial" class="btn btn-primary" type="button">Generate Trees</button>
+          </div>
+
+          <hr class="divider">
+
+          <div class="control-group">
+            <button id="btn-gen-synthetic" class="btn btn-secondary" type="button">View Synthetic Data</button>
+          </div>
+
+          <hr class="divider">
+
+          <h3 class="card-title" style="margin-top:4px">Analysis</h3>
+          <div class="control-group">
+            <button id="btn-analyze-spatial" class="btn btn-secondary" type="button">Run Evaluation</button>
+          </div>
+          <div id="sp-metrics" class="metrics-table"></div>
+        </div>
+
+        <!-- 3D Visualization area -->
+        <div class="card viz-card viz-card--spatial">
+          <h3 class="card-title">3D Morphologies</h3>
+          <div id="sp-3d-grid" class="spatial-grid" aria-label="3D tree visualization gallery"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Graph ML Research Toolkit &mdash; built for exploratory research</p>
+  </footer>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script type="module" src="static/js/app.js"></script>
+</body>
+</html>
