@@ -27,7 +27,7 @@ Includes a FastAPI backend, browser-based frontend with interactive 3D tree visu
 ## Quickstart
 
 ```bash
-git clone https://github.com/yourusername/ml-projects.git
+git clone https://github.com/erik2810/ml-projects.git
 cd ml-projects
 ./setup.sh          # macOS / Linux
 # or setup.bat      # Windows
