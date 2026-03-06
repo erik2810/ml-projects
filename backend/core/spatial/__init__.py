@@ -8,3 +8,11 @@ from .metrics import (
     spatial_graph_mmd,
     strahler_numbers,
 )
+from .mesh_utils import (
+    parse_obj,
+    mesh_to_spatial_graph,
+    deformed_icosahedron,
+    low_poly_rock,
+    generate_mesh_dataset,
+)
+from .mesh_vae import SpatialMeshVAE, train_mesh_vae

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Graph ML Lab — Interactive demos for GNNs, conditional graph generation, and graph variational autoencoders.">
+  <meta name="description" content="Graph ML Lab — Interactive demos for GNNs, conditional graph generation, graph VAEs, spatial 3D tree generation, and mesh latent space interpolation.">
   <title>Graph ML Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +19,8 @@
         <li><a href="#gnn">GNN</a></li>
         <li><a href="#generator">Generator</a></li>
         <li><a href="#vae">VAE</a></li>
+        <li><a href="#spatial">Spatial 3D</a></li>
+        <li><a href="#mesh">Mesh</a></li>
       </ul>
     </div>
   </nav>
@@ -27,7 +29,7 @@
   <section class="hero" id="top">
     <div class="container">
       <h1>Graph ML Lab</h1>
-      <p class="tagline">From-scratch implementations of graph neural networks, conditional graph generation, and variational autoencoders on small social network skeletons.</p>
+      <p class="tagline">From-scratch implementations of graph neural networks, conditional graph generation, variational autoencoders, spatial 3D tree generation, and mesh latent space interpolation.</p>
       <div class="hero-links">
         <a href="https://github.com" class="btn btn-primary">View Source</a>
         <a href="#gnn" class="btn btn-outline">Explore Demos</a>
@@ -201,6 +203,124 @@
     </div>
   </section>
 
+  <!-- Spatial 3D Section -->
+  <section id="spatial">
+    <div class="container">
+      <span class="section-label">04 — Spatial 3D</span>
+      <h2>Spatial Tree Generation</h2>
+      <p class="section-desc">
+        Autoregressive VAE for 3D branching trees and neuron-like morphologies.
+        Each node is placed in continuous 3D space and attached to a parent via learned conditional distributions.
+      </p>
+
+      <div class="spatial-layout fade-in">
+        <div class="spatial-info-panel">
+          <div class="card">
+            <h4>Architecture</h4>
+            <div class="code-block">
+<span class="comment"># Autoregressive decoder</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> range(max_nodes):
+    parent = choose_parent(h, mask)
+    pos[i] = predict_pos(h, parent)
+    h = gnn_update(h, adj)</div>
+          </div>
+
+          <div class="metrics-grid fade-in fade-in-delay-1">
+            <div class="card metric-card">
+              <span class="metric-value" id="m-tree-nodes">25–40</span>
+              <span class="metric-label">Nodes</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-tree-branch">2–6</span>
+              <span class="metric-label">Branch Pts</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-tree-strahler">2–3</span>
+              <span class="metric-label">Strahler</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value" id="m-tree-path">23–41</span>
+              <span class="metric-label">Path Length</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="spatial-grid fade-in" id="spatial-tree-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mesh Interpolation Section -->
+  <section id="mesh">
+    <div class="container">
+      <span class="section-label">05 — Mesh VAE</span>
+      <h2>Low-Poly Mesh Latent Space Interpolation</h2>
+      <p class="section-desc">
+        A graph VAE with inner-product decoder (VGAE) extended to jointly predict 3D positions.
+        Enables smooth interpolation between meshes of different topology in a shared latent space.
+      </p>
+
+      <div class="mesh-layout">
+        <!-- Procedural Meshes -->
+        <div class="fade-in">
+          <h3>Procedural Meshes</h3>
+          <p style="font-size:0.95rem; margin-bottom:1.5rem;">
+            Deformed icosahedra (golden-ratio vertices + noise) and low-poly rocks
+            (K-NN on random sphere points). All fully asymmetric, no tree structure.
+          </p>
+          <div class="mesh-grid" id="mesh-gallery-grid"></div>
+        </div>
+
+        <!-- Architecture diagram -->
+        <div class="architecture-panel fade-in">
+          <h3>Mesh VAE Architecture</h3>
+          <div class="arch-diagram">
+            <div class="arch-block input-block">
+              <div class="arch-block-title">Input</div>
+              <div class="arch-block-desc">Mesh (A, pos)</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block encoder-block">
+              <div class="arch-block-title">Encoder</div>
+              <div class="arch-block-desc">Position-aware<br>GNN</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block latent-block">
+              <div class="arch-block-title">Latent</div>
+              <div class="arch-block-desc">&mu;, &sigma;<br>z ~ N(&mu;, &sigma;&sup2;)</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block decoder-block">
+              <div class="arch-block-title">Decoder</div>
+              <div class="arch-block-desc">Inner-product<br>adj + MLP pos</div>
+            </div>
+            <span class="arch-arrow">&rarr;</span>
+            <div class="arch-block output-block">
+              <div class="arch-block-title">Output</div>
+              <div class="arch-block-desc">Mesh<br>(A&#x302;, pos&#x302;)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interpolation strip -->
+        <div class="interpolation-panel fade-in">
+          <h3>Latent Space Interpolation: Icosahedron → Rock</h3>
+          <div class="mesh-interp-strip" id="mesh-interp-strip"></div>
+          <div class="interpolation-endpoints">
+            <span class="endpoint-label"><span class="endpoint-dot" style="background:#ec4899"></span> Source (icosahedron)</span>
+            <span class="endpoint-label"><span class="endpoint-dot" style="background:#f59e0b"></span> Target (rock)</span>
+          </div>
+        </div>
+
+        <!-- Training curve -->
+        <div class="chart-container fade-in">
+          <h4>Mesh VAE Training Loss</h4>
+          <div class="chart-area" id="mesh-vae-chart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer>
     <div class="container">
@@ -212,6 +332,7 @@
             <li><a href="https://arxiv.org/abs/1710.10903">Velickovic et al., 2018 (GAT)</a></li>
             <li><a href="https://arxiv.org/abs/1802.03480">Simonovsky & Komodakis, 2018 (GraphVAE)</a></li>
             <li><a href="https://arxiv.org/abs/1611.07308">Kipf & Welling, 2016 (VGAE)</a></li>
+            <li><a href="https://arxiv.org/abs/2006.04159">Luo et al., 2021 (GraphDF)</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -226,7 +347,7 @@
 
       <div class="footer-citation">
         <div class="code-block">@misc{graphmlab,
-  title  = {Graph ML Lab: From-scratch GNN, Generator, and VAE},
+  title  = {Graph ML Lab: From-scratch GNN, Generator, VAE, Spatial 3D Trees, and Mesh Interpolation},
   year   = {2025},
   url    = {https://github.com/yourusername/ml-projects}
 }</div>

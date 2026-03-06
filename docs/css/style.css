@@ -862,6 +862,215 @@ footer {
   }
 }
 
+/* --- Spatial 3D Section --- */
+.spatial-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.spatial-info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.spatial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.spatial-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.spatial-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.spatial-card-viz {
+  height: 200px;
+  background: var(--color-code-bg);
+  position: relative;
+}
+
+.spatial-card-info {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.spatial-card-info h4 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.spatial-card-info .spatial-props {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--color-text-mute);
+}
+
+.spatial-card-info .spatial-props span {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Spatial tree SVG: indigo nodes + edges */
+.spatial-card-viz .tree-edge {
+  stroke: #818cf8;
+  stroke-width: 1.5;
+  stroke-opacity: 0.55;
+}
+
+.spatial-card-viz .tree-node {
+  fill: #4f46e5;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+/* --- Mesh Section --- */
+.mesh-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+}
+
+.mesh-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.mesh-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.mesh-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.mesh-card-viz {
+  height: 220px;
+  background: var(--color-code-bg);
+  position: relative;
+}
+
+.mesh-card-info {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.mesh-card-info h4 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.mesh-card-info .mesh-props {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-mute);
+}
+
+.mesh-card-info .mesh-props span {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Mesh SVG: pink wireframe */
+.mesh-card-viz .mesh-edge,
+.mesh-interp-step-viz .mesh-edge {
+  stroke: #ec4899;
+  stroke-width: 1;
+  stroke-opacity: 0.5;
+}
+
+.mesh-card-viz .mesh-node,
+.mesh-interp-step-viz .mesh-node {
+  fill: #ec4899;
+  stroke: #fff;
+  stroke-width: 0.8;
+}
+
+/* Mesh interpolation strip */
+.mesh-interp-strip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 1rem 0;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mesh-interp-step {
+  flex: 0 0 auto;
+  width: 140px;
+  scroll-snap-align: start;
+  text-align: center;
+}
+
+.mesh-interp-step-viz {
+  width: 140px;
+  height: 140px;
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+
+.mesh-interp-step-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-mute);
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+
+/* --- Responsive: spatial & mesh --- */
+@media (max-width: 900px) {
+  .spatial-layout {
+    grid-template-columns: 1fr;
+  }
+  .mesh-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .spatial-grid {
+    grid-template-columns: 1fr;
+  }
+  .mesh-grid {
+    grid-template-columns: 1fr;
+  }
+  .mesh-interp-step {
+    width: 120px;
+  }
+  .mesh-interp-step-viz {
+    width: 120px;
+    height: 120px;
+  }
+}
+
 /* --- Utility --- */
 .text-center { text-align: center; }
 .mt-1 { margin-top: 0.5rem; }

@@ -429,3 +429,136 @@ class TestBenchmarks:
         table = compare_results(results)
         assert 'test_model' in table
         assert 'mmd' in table
+
+
+# ---------------------------------------------------------------------------
+# Mesh utilities tests
+# ---------------------------------------------------------------------------
+
+from backend.core.spatial.mesh_utils import (
+    parse_obj,
+    mesh_to_spatial_graph,
+    deformed_icosahedron,
+    low_poly_rock,
+    generate_mesh_dataset,
+)
+from backend.core.spatial.mesh_vae import SpatialMeshVAE, train_mesh_vae
+
+
+class TestMeshUtils:
+    def test_deformed_icosahedron_shape(self):
+        g = deformed_icosahedron(scale=1.0, noise=0.1)
+        assert g.num_nodes == 12
+        assert g.num_edges == 30
+        assert g.pos.shape == (12, 3)
+
+    def test_deformed_icosahedron_adj_symmetric(self):
+        g = deformed_icosahedron()
+        assert torch.allclose(g.adj, g.adj.t())
+
+    def test_deformed_icosahedron_no_self_loops(self):
+        g = deformed_icosahedron()
+        assert g.adj.diag().sum().item() == 0.0
+
+    def test_low_poly_rock_shape(self):
+        g = low_poly_rock(num_points=20, k_neighbors=5)
+        assert g.num_nodes == 20
+        assert g.pos.shape == (20, 3)
+        assert g.num_edges > 0
+
+    def test_low_poly_rock_adj_symmetric(self):
+        g = low_poly_rock(num_points=16)
+        assert torch.allclose(g.adj, g.adj.t())
+
+    def test_mesh_parents_all_minus_one(self):
+        """Meshes should have parent = -1 for all nodes (no tree structure)."""
+        g = deformed_icosahedron()
+        assert (g.parent == -1).all()
+        g2 = low_poly_rock(num_points=15)
+        assert (g2.parent == -1).all()
+
+    def test_parse_obj_basic(self):
+        obj_text = """
+# simple triangle
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.5 1.0 0.0
+v 0.5 0.5 1.0
+f 1 2 3
+f 1 2 4
+f 2 3 4
+f 1 3 4
+"""
+        g = parse_obj(obj_text)
+        assert g.num_nodes == 4
+        assert g.num_edges > 0
+        assert (g.parent == -1).all()
+
+    def test_generate_mesh_dataset_mixed(self):
+        graphs = generate_mesh_dataset(num=6, mesh_type='mixed')
+        assert len(graphs) == 6
+        for g in graphs:
+            assert isinstance(g, SpatialGraph)
+            assert g.num_nodes > 0
+            assert (g.parent == -1).all()
+
+    def test_generate_mesh_dataset_rock(self):
+        graphs = generate_mesh_dataset(num=3, mesh_type='rock', num_points_range=(12, 20))
+        assert len(graphs) == 3
+        for g in graphs:
+            assert 12 <= g.num_nodes <= 20
+
+    def test_generate_mesh_dataset_icosahedron(self):
+        graphs = generate_mesh_dataset(num=3, mesh_type='icosahedron')
+        assert len(graphs) == 3
+        for g in graphs:
+            assert g.num_nodes == 12  # always 12 vertices
+
+
+class TestSpatialMeshVAE:
+    def test_forward_returns_loss(self):
+        g = deformed_icosahedron()
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        out = model(g)
+        assert 'loss' in out
+        assert 'adj_loss' in out
+        assert 'pos_loss' in out
+        assert 'kl' in out
+        assert isinstance(out['graph'], SpatialGraph)
+
+    def test_forward_loss_is_scalar(self):
+        g = deformed_icosahedron()
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        out = model(g)
+        assert out['loss'].dim() == 0
+
+    def test_generate_returns_graphs(self):
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        graphs = model.generate(num_samples=2)
+        assert len(graphs) == 2
+        for g in graphs:
+            assert isinstance(g, SpatialGraph)
+            assert g.num_nodes >= 1
+            assert (g.parent == -1).all()
+
+    def test_interpolate(self):
+        g1 = deformed_icosahedron()
+        g2 = low_poly_rock(num_points=12)
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        graphs = model.interpolate(g1, g2, steps=3)
+        assert len(graphs) == 4  # steps + 1
+        for g in graphs:
+            assert isinstance(g, SpatialGraph)
+
+    def test_training_runs(self):
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        graphs = generate_mesh_dataset(num=4, mesh_type='mixed', num_points_range=(8, 12))
+        losses = train_mesh_vae(model, graphs, epochs=3, lr=1e-3)
+        assert len(losses) == 3
+        assert all(math.isfinite(l) for l in losses)
+
+    def test_encode_returns_latent(self):
+        g = deformed_icosahedron()
+        model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
+        z = model.encode(g)
+        assert z.shape == (8,)

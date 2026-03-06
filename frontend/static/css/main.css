@@ -762,6 +762,58 @@ input[type="range"]::-moz-range-thumb {
 }
 
 
+/* --- Mesh rendering --- */
+.spatial-cell .mesh-edge {
+  stroke: #ec4899;
+  stroke-width: 1.4;
+  stroke-opacity: 0.55;
+  fill: none;
+}
+
+.spatial-cell .node-mesh {
+  fill: #ec4899;
+}
+
+/* Interpolation strip */
+.interpolation-strip {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding: var(--space-sm) 0;
+  min-height: 200px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.interpolation-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.interpolation-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.interpolation-strip::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.interp-step {
+  flex: 0 0 180px;
+  position: relative;
+}
+
+.interp-step-label {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+
 /* --- Responsive --- */
 @media (max-width: 1100px) {
   .gnn-layout {

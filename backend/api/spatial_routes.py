@@ -16,6 +16,8 @@ from backend.core.spatial.metrics import (
 )
 from backend.core.spatial.tree_gen import SpatialTreeVAE, train_spatial_vae
 from backend.core.spatial.diffusion3d import SpatialGraphDiffusion, train_spatial_diffusion
+from backend.core.spatial.mesh_utils import generate_mesh_dataset
+from backend.core.spatial.mesh_vae import SpatialMeshVAE, train_mesh_vae
 from backend.config import DEVICE, CHECKPOINT_DIR
 
 router = APIRouter(prefix="/spatial", tags=["spatial"])
@@ -26,6 +28,8 @@ _state = {
     'train_data': None,
     'generated_vae': None,
     'generated_diff': None,
+    'mesh_vae_model': None,
+    'mesh_train_data': None,
 }
 
 
@@ -46,12 +50,16 @@ def _serialize_graph(graph: SpatialGraph) -> dict:
 
     parent = graph.parent.detach().cpu().tolist()
 
+    # determine graph type: "mesh" if all parents are -1, else "tree"
+    is_mesh = all(p == -1 for p in parent)
+
     result = {
         "num_nodes": n,
         "num_edges": len(edges),
         "positions": pos,
         "edges": edges,
         "parent": parent,
+        "type": "mesh" if is_mesh else "tree",
     }
 
     if graph.radii is not None:
@@ -327,6 +335,121 @@ def interpolate_endpoint(req: InterpolateRequest):
         raise HTTPException(400, f"Index out of range (have {len(data)} graphs).")
 
     model = _state['vae_model']
+    g1 = data[req.graph_idx_a].to(DEVICE)
+    g2 = data[req.graph_idx_b].to(DEVICE)
+
+    interps = model.interpolate(g1, g2, steps=req.steps)
+    return {
+        "graphs": [_serialize_graph(g) for g in interps],
+        "source": _serialize_graph(g1),
+        "target": _serialize_graph(g2),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Mesh VAE: procedural meshes + latent interpolation
+# ---------------------------------------------------------------------------
+
+class MeshGenerateRequest(BaseModel):
+    mesh_type: str = "mixed"
+    num_meshes: int = 4
+    num_nodes: int = 24
+
+
+@router.post("/mesh/generate")
+def generate_meshes(req: MeshGenerateRequest):
+    """Generate procedural low-poly meshes (rocks, icosahedra)."""
+    if req.mesh_type not in ("rock", "icosahedron", "mixed"):
+        raise HTTPException(400, "mesh_type must be 'rock', 'icosahedron', or 'mixed'")
+
+    graphs = generate_mesh_dataset(
+        num=req.num_meshes,
+        mesh_type=req.mesh_type,
+        num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
+        device=DEVICE,
+    )
+    return {"graphs": [_serialize_graph(g) for g in graphs]}
+
+
+class TrainMeshVAERequest(BaseModel):
+    mesh_type: str = "mixed"
+    num_train: int = 100
+    num_nodes: int = 24
+    hidden_dim: int = 64
+    latent_dim: int = 32
+    epochs: int = 50
+    lr: float = 1e-3
+
+
+@router.post("/mesh/vae/train")
+def train_mesh_vae_endpoint(req: TrainMeshVAERequest):
+    """Train the mesh VAE on synthetic low-poly meshes."""
+    graphs = generate_mesh_dataset(
+        num=req.num_train,
+        mesh_type=req.mesh_type,
+        num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
+        device=DEVICE,
+    )
+    _state['mesh_train_data'] = graphs
+
+    max_n = max(g.num_nodes for g in graphs) + 4
+    model = SpatialMeshVAE(
+        latent_dim=req.latent_dim,
+        hidden_dim=req.hidden_dim,
+        max_nodes=max_n,
+    ).to(DEVICE)
+
+    losses = train_mesh_vae(
+        model, graphs, epochs=req.epochs, lr=req.lr,
+    )
+    _state['mesh_vae_model'] = model
+
+    path = CHECKPOINT_DIR / "mesh_vae.pt"
+    torch.save(model.state_dict(), path)
+
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return {
+        "final_loss": round(losses[-1], 4),
+        "loss_curve": [round(l, 4) for l in losses],
+        "num_params": n_params,
+        "max_nodes": max_n,
+    }
+
+
+class GenerateMeshVAERequest(BaseModel):
+    num_samples: int = 4
+
+
+@router.post("/mesh/vae/generate")
+def generate_from_mesh_vae(req: GenerateMeshVAERequest):
+    """Generate meshes from the trained mesh VAE prior."""
+    if _state['mesh_vae_model'] is None:
+        raise HTTPException(400, "No trained mesh VAE. Call /spatial/mesh/vae/train first.")
+
+    model = _state['mesh_vae_model']
+    generated = model.generate(num_samples=req.num_samples, device=DEVICE)
+    return {"graphs": [_serialize_graph(g) for g in generated]}
+
+
+class MeshInterpolateRequest(BaseModel):
+    graph_idx_a: int = 0
+    graph_idx_b: int = 1
+    steps: int = 7
+
+
+@router.post("/mesh/vae/interpolate")
+def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
+    """Interpolate between two training meshes in latent space."""
+    if _state['mesh_vae_model'] is None:
+        raise HTTPException(400, "No trained mesh VAE.")
+    if _state['mesh_train_data'] is None:
+        raise HTTPException(400, "No mesh training data.")
+
+    data = _state['mesh_train_data']
+    if req.graph_idx_a >= len(data) or req.graph_idx_b >= len(data):
+        raise HTTPException(400, f"Index out of range (have {len(data)} meshes).")
+
+    model = _state['mesh_vae_model']
     g1 = data[req.graph_idx_a].to(DEVICE)
     g2 = data[req.graph_idx_b].to(DEVICE)
 

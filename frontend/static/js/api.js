@@ -41,4 +41,10 @@ export const api = {
   generateSpatialDiffusion: (params) => request('/spatial/diffusion/generate', { method: 'POST', body: params }),
   analyzeSpatial: (params) => request('/spatial/analyze', { method: 'POST', body: params }),
   shollProfile: (idx) => request(`/spatial/sholl/${idx}`, { method: 'POST' }),
+
+  // Mesh VAE
+  generateMeshes: (params) => request('/spatial/mesh/generate', { method: 'POST', body: params }),
+  trainMeshVAE: (params) => request('/spatial/mesh/vae/train', { method: 'POST', body: params }),
+  generateMeshVAE: (params) => request('/spatial/mesh/vae/generate', { method: 'POST', body: params }),
+  interpolateMeshVAE: (params) => request('/spatial/mesh/vae/interpolate', { method: 'POST', body: params }),
 };

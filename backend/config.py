@@ -59,3 +59,11 @@ SPATIAL_DIFFUSION_DEFAULTS = {
     "lr": 3e-4,
     "epochs": 100,
 }
+
+MESH_VAE_DEFAULTS = {
+    "max_nodes": 32,
+    "latent_dim": 32,
+    "hidden_dim": 64,
+    "lr": 1e-3,
+    "epochs": 100,
+}

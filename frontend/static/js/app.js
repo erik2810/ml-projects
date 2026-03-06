@@ -432,12 +432,16 @@ function renderSpatialGrid(containerId, graphs) {
     cell.className = 'spatial-cell';
     grid.appendChild(cell);
 
-    renderSpatialTree(cell, g);
+    if (g.type === 'mesh') {
+      renderSpatialMesh(cell, g);
+    } else {
+      renderSpatialTree(cell, g);
+    }
 
     const feats = g.features || {};
     const label = document.createElement('div');
     label.className = 'spatial-cell-label';
-    const parts = [`n=${g.num_nodes}`];
+    const parts = [`n=${g.num_nodes}  e=${g.num_edges}`];
     if (feats.num_branch_points !== undefined) parts.push(`br=${feats.num_branch_points}`);
     if (feats.num_tips !== undefined) parts.push(`tips=${feats.num_tips}`);
     if (feats.strahler_order !== undefined) parts.push(`S=${feats.strahler_order}`);
@@ -578,3 +582,200 @@ function renderSpatialTree(container, graphData) {
       .attr('r', r);
   }
 }
+
+
+/**
+ * Render a spatial mesh (general graph with cycles) as pink wireframe.
+ * Uses the same isometric projection as renderSpatialTree but with
+ * edge-list rendering and uniform node color.
+ */
+function renderSpatialMesh(container, graphData) {
+  const size = container.clientWidth || 260;
+  const pad = 30;
+
+  const positions = graphData.positions;
+  const edges = graphData.edges;
+  const n = positions.length;
+
+  if (n === 0) return;
+
+  const cos30 = Math.cos(Math.PI / 6);
+  const sin30 = Math.sin(Math.PI / 6);
+
+  const projected = positions.map(([x, y, z]) => ({
+    px: (x - z) * cos30,
+    py: -y + (x + z) * sin30 * 0.5,
+  }));
+
+  const xs = projected.map(p => p.px);
+  const ys = projected.map(p => p.py);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = (size - 2 * pad) / Math.max(rangeX, rangeY);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
+  function toScreen(p) {
+    return {
+      x: cx + (p.px - midX) * scale,
+      y: cy + (p.py - midY) * scale,
+    };
+  }
+
+  const svg = d3.select(container).append('svg')
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // axis indicators
+  const axisLen = 25;
+  const origin = { x: pad + 5, y: size - pad - 5 };
+  const axes = [
+    { dx: axisLen * cos30, dy: -axisLen * sin30 * 0.5, label: 'x' },
+    { dx: 0, dy: -axisLen, label: 'y' },
+    { dx: -axisLen * cos30, dy: -axisLen * sin30 * 0.5, label: 'z' },
+  ];
+  axes.forEach(a => {
+    svg.append('line')
+      .attr('class', 'axis-line')
+      .attr('x1', origin.x).attr('y1', origin.y)
+      .attr('x2', origin.x + a.dx).attr('y2', origin.y + a.dy);
+    svg.append('text')
+      .attr('class', 'axis-label')
+      .attr('x', origin.x + a.dx * 1.3)
+      .attr('y', origin.y + a.dy * 1.3 + 3)
+      .text(a.label);
+  });
+
+  // draw edges (pink wireframe)
+  const edgeGroup = svg.append('g');
+  if (edges) {
+    edges.forEach(([s, t]) => {
+      const ps = toScreen(projected[s]);
+      const pt = toScreen(projected[t]);
+      edgeGroup.append('line')
+        .attr('class', 'mesh-edge')
+        .attr('x1', ps.x).attr('y1', ps.y)
+        .attr('x2', pt.x).attr('y2', pt.y);
+    });
+  }
+
+  // draw nodes (uniform pink)
+  const nodeGroup = svg.append('g');
+  for (let i = 0; i < n; i++) {
+    const sc = toScreen(projected[i]);
+    nodeGroup.append('circle')
+      .attr('class', 'tree-node node-mesh')
+      .attr('cx', sc.x)
+      .attr('cy', sc.y)
+      .attr('r', 2.5);
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Mesh Interpolation Panel
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-view-meshes')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const params = {
+      mesh_type: document.getElementById('mesh-type').value,
+      num_meshes: 4,
+      num_nodes: +document.getElementById('mesh-num-nodes').value,
+    };
+    const result = await api.generateMeshes(params);
+    renderSpatialGrid('mesh-3d-grid', result.graphs);
+    document.getElementById('mesh-interp-strip').innerHTML = '';
+    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes`);
+  } catch (e) {
+    log('mesh-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+document.getElementById('btn-train-mesh-vae')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  const statusLog = document.getElementById('mesh-status-log');
+  statusLog.textContent = '';
+  log('mesh-status-log', 'Training mesh VAE...');
+
+  try {
+    const params = {
+      mesh_type: document.getElementById('mesh-type').value,
+      num_train: +document.getElementById('mesh-num-train').value,
+      num_nodes: +document.getElementById('mesh-num-nodes').value,
+      hidden_dim: +document.getElementById('mesh-hidden-dim').value,
+      latent_dim: +document.getElementById('mesh-latent-dim').value,
+      epochs: +document.getElementById('mesh-epochs').value,
+      lr: +document.getElementById('mesh-lr').value,
+    };
+
+    const result = await api.trainMeshVAE(params);
+    log('mesh-status-log', `Done — loss: ${result.final_loss} | params: ${result.num_params.toLocaleString()}`);
+
+    const container = document.getElementById('mesh-loss-container');
+    container.innerHTML = '<canvas width="240" height="120"></canvas>';
+    drawLossCurve(container.querySelector('canvas'), result.loss_curve);
+  } catch (e) {
+    log('mesh-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+document.getElementById('btn-gen-mesh-vae')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const n = +document.getElementById('mesh-gen-samples').value;
+    const result = await api.generateMeshVAE({ num_samples: n });
+    renderSpatialGrid('mesh-3d-grid', result.graphs);
+    document.getElementById('mesh-interp-strip').innerHTML = '';
+    log('mesh-status-log', `Generated ${result.graphs.length} meshes from VAE`);
+  } catch (e) {
+    log('mesh-status-log', `Generate error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+document.getElementById('btn-interp-mesh')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const params = {
+      graph_idx_a: +document.getElementById('mesh-interp-a').value,
+      graph_idx_b: +document.getElementById('mesh-interp-b').value,
+      steps: +document.getElementById('mesh-interp-steps').value,
+    };
+    const result = await api.interpolateMeshVAE(params);
+
+    // show source + target in grid
+    renderSpatialGrid('mesh-3d-grid', [result.source, result.target]);
+
+    // render interpolation strip
+    const strip = document.getElementById('mesh-interp-strip');
+    strip.innerHTML = '';
+
+    result.graphs.forEach((g, i) => {
+      const step = document.createElement('div');
+      step.className = 'interp-step spatial-cell';
+      strip.appendChild(step);
+
+      renderSpatialMesh(step, g);
+
+      const t = (i / (result.graphs.length - 1)).toFixed(2);
+      const label = document.createElement('div');
+      label.className = 'interp-step-label';
+      label.textContent = `t=${t}`;
+      step.appendChild(label);
+    });
+
+    log('mesh-status-log', `Interpolation: ${result.graphs.length} steps`);
+  } catch (e) {
+    log('mesh-status-log', `Interpolation error: ${e.message}`);
+  }
+  setLoading(this, false);
+});

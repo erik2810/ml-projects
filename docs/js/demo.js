@@ -373,4 +373,216 @@
   // VAE training chart
   drawChart('vae-chart', EXAMPLES.trainingCurves.vae, 'totalLoss', { color: '#c084fc', yLabel: 'ELBO loss' });
 
+  // ── Spatial 3D: Isometric tree rendering ──────────────────────────────
+  const COS30 = Math.cos(Math.PI / 6);
+  const SIN30 = Math.sin(Math.PI / 6);
+
+  function isoProject(pos3d) {
+    // isometric projection: (x, y, z) → (screenX, screenY)
+    const [x, y, z] = pos3d;
+    const sx = (x - z) * COS30;
+    const sy = -y + (x + z) * SIN30 * 0.5;
+    return [sx, sy];
+  }
+
+  function renderSpatialTree(container, treeData) {
+    const w = container.clientWidth || 200;
+    const h = container.clientHeight || 200;
+
+    // project all positions
+    const projected = treeData.positions.map(p => isoProject(p));
+
+    // find bounds
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [sx, sy] of projected) {
+      if (sx < minX) minX = sx;
+      if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy;
+      if (sy > maxY) maxY = sy;
+    }
+
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const pad = 20;
+    const scaleX = (w - 2 * pad) / rangeX;
+    const scaleY = (h - 2 * pad) / rangeY;
+    const scale = Math.min(scaleX, scaleY);
+    const cx = w / 2;
+    const cy = h / 2;
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    const svg = d3.select(container).append('svg')
+      .attr('viewBox', `0 0 ${w} ${h}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
+    // edges
+    for (const [a, b] of treeData.edges) {
+      const [x1, y1] = projected[a];
+      const [x2, y2] = projected[b];
+      svg.append('line')
+        .attr('class', 'tree-edge')
+        .attr('x1', cx + (x1 - midX) * scale)
+        .attr('y1', cy + (y1 - midY) * scale)
+        .attr('x2', cx + (x2 - midX) * scale)
+        .attr('y2', cy + (y2 - midY) * scale);
+    }
+
+    // nodes
+    for (const [sx, sy] of projected) {
+      svg.append('circle')
+        .attr('class', 'tree-node')
+        .attr('cx', cx + (sx - midX) * scale)
+        .attr('cy', cy + (sy - midY) * scale)
+        .attr('r', 3);
+    }
+  }
+
+  function renderSpatialTrees() {
+    const grid = document.getElementById('spatial-tree-grid');
+    if (!grid || !EXAMPLES.spatialTrees) return;
+    grid.innerHTML = '';
+
+    for (const tree of EXAMPLES.spatialTrees) {
+      const card = document.createElement('div');
+      card.className = 'spatial-card';
+
+      const viz = document.createElement('div');
+      viz.className = 'spatial-card-viz';
+      card.appendChild(viz);
+
+      const info = document.createElement('div');
+      info.className = 'spatial-card-info';
+      const feats = tree.features || {};
+      info.innerHTML = `
+        <h4>${tree.name}</h4>
+        <div class="spatial-props">
+          <span>${tree.num_nodes} nodes</span>
+          <span>${tree.num_edges} edges</span>
+          ${feats.branch_points !== undefined ? `<span>${feats.branch_points} branch pts</span>` : ''}
+        </div>`;
+      card.appendChild(info);
+      grid.appendChild(card);
+
+      renderSpatialTree(viz, tree);
+    }
+  }
+
+  renderSpatialTrees();
+
+  // ── Mesh: Isometric wireframe rendering ───────────────────────────────
+  function renderMeshWireframe(container, meshData, opts = {}) {
+    const w = container.clientWidth || 200;
+    const h = container.clientHeight || 200;
+
+    const projected = meshData.positions.map(p => isoProject(p));
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [sx, sy] of projected) {
+      if (sx < minX) minX = sx;
+      if (sx > maxX) maxX = sx;
+      if (sy < minY) minY = sy;
+      if (sy > maxY) maxY = sy;
+    }
+
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const pad = opts.pad || 16;
+    const scaleX = (w - 2 * pad) / rangeX;
+    const scaleY = (h - 2 * pad) / rangeY;
+    const scale = Math.min(scaleX, scaleY);
+    const cx = w / 2;
+    const cy = h / 2;
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    const svg = d3.select(container).append('svg')
+      .attr('viewBox', `0 0 ${w} ${h}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
+    // edges
+    for (const [a, b] of meshData.edges) {
+      const [x1, y1] = projected[a];
+      const [x2, y2] = projected[b];
+      svg.append('line')
+        .attr('class', 'mesh-edge')
+        .attr('x1', cx + (x1 - midX) * scale)
+        .attr('y1', cy + (y1 - midY) * scale)
+        .attr('x2', cx + (x2 - midX) * scale)
+        .attr('y2', cy + (y2 - midY) * scale);
+    }
+
+    // nodes
+    const nodeR = opts.nodeRadius || 3;
+    for (const [sx, sy] of projected) {
+      svg.append('circle')
+        .attr('class', 'mesh-node')
+        .attr('cx', cx + (sx - midX) * scale)
+        .attr('cy', cy + (sy - midY) * scale)
+        .attr('r', nodeR);
+    }
+  }
+
+  function renderMeshGallery() {
+    const grid = document.getElementById('mesh-gallery-grid');
+    if (!grid || !EXAMPLES.meshes) return;
+    grid.innerHTML = '';
+
+    for (const mesh of EXAMPLES.meshes) {
+      const card = document.createElement('div');
+      card.className = 'mesh-card';
+
+      const viz = document.createElement('div');
+      viz.className = 'mesh-card-viz';
+      card.appendChild(viz);
+
+      const info = document.createElement('div');
+      info.className = 'mesh-card-info';
+      info.innerHTML = `
+        <h4>${mesh.name}</h4>
+        <div class="mesh-props">
+          <span>${mesh.num_nodes} vertices</span>
+          <span>${mesh.num_edges} edges</span>
+        </div>`;
+      card.appendChild(info);
+      grid.appendChild(card);
+
+      renderMeshWireframe(viz, mesh);
+    }
+  }
+
+  renderMeshGallery();
+
+  // ── Mesh interpolation strip ──────────────────────────────────────────
+  function renderMeshInterpolationStrip() {
+    const strip = document.getElementById('mesh-interp-strip');
+    if (!strip || !EXAMPLES.meshInterpolation) return;
+    strip.innerHTML = '';
+
+    for (const step of EXAMPLES.meshInterpolation.steps) {
+      const stepEl = document.createElement('div');
+      stepEl.className = 'mesh-interp-step';
+
+      const viz = document.createElement('div');
+      viz.className = 'mesh-interp-step-viz';
+      stepEl.appendChild(viz);
+
+      const label = document.createElement('div');
+      label.className = 'mesh-interp-step-label';
+      label.textContent = step.label;
+      stepEl.appendChild(label);
+
+      strip.appendChild(stepEl);
+
+      renderMeshWireframe(viz, step, { pad: 12, nodeRadius: 2.5 });
+    }
+  }
+
+  renderMeshInterpolationStrip();
+
+  // Mesh VAE training chart
+  if (EXAMPLES.trainingCurvesSpatial && EXAMPLES.trainingCurvesSpatial.meshVae) {
+    drawChart('mesh-vae-chart', EXAMPLES.trainingCurvesSpatial.meshVae, 'loss', { color: '#ec4899', yLabel: 'Mesh VAE loss' });
+  }
+
 })();
