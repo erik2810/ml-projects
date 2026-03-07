@@ -153,12 +153,19 @@ class TreeDecoder(nn.Module):
             # input: embedding of the most recently added node
             gru_input = node_embeds[-1]
             h = self.gru(gru_input, h)
+            # Prevent hidden state from growing unbounded on long sequences
+            h = torch.clamp(h, -5.0, 5.0)
 
             # === parent selection via attention ===
             query = self.attn_query(h).unsqueeze(0)  # (1, hidden)
             keys = self.attn_key(torch.stack(node_embeds))  # (t, hidden)
             attn_logits = (query @ keys.t()).squeeze(0) / math.sqrt(self.hidden_dim)
+            # Clamp logits to prevent overflow in softmax
+            attn_logits = torch.clamp(attn_logits, -10.0, 10.0)
             parent_probs = F.softmax(attn_logits, dim=0)
+            # Guard against numerical issues in multinomial
+            parent_probs = parent_probs + 1e-8
+            parent_probs = parent_probs / parent_probs.sum()
 
             if target is not None and torch.rand(1).item() < teacher_forcing:
                 chosen_parent = int(target.parent[t].item())
@@ -182,7 +189,7 @@ class TreeDecoder(nn.Module):
 
             pos_input = torch.cat([h, parent_embed])
             mu = self.pos_mu(pos_input)
-            logvar = self.pos_logvar(pos_input)
+            logvar = torch.clamp(self.pos_logvar(pos_input), -6.0, 2.0)
 
             if target is not None and torch.rand(1).item() < teacher_forcing:
                 new_pos = target.pos[t]

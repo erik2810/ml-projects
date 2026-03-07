@@ -23,7 +23,7 @@ class TrainRequest(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    num_nodes: float = 0.5
+    num_nodes: int = 10
     density: float = 0.3
     clustering: float = 0.3
     num_samples: int = 4
@@ -62,8 +62,13 @@ def generate(req: GenerateRequest):
         raise HTTPException(400, "No trained model. Call /generator/train first.")
 
     model = _state["model"]
+
+    # Normalize node count to [0, 1] using model's max_nodes
+    target_n = min(max(req.num_nodes, 2), model.max_nodes)
+    nodes_norm = target_n / model.max_nodes
+
     conditions = torch.tensor(
-        [[req.num_nodes, req.density, req.clustering]],
+        [[nodes_norm, req.density, req.clustering]],
         dtype=torch.float32,
     )
 
@@ -73,11 +78,25 @@ def generate(req: GenerateRequest):
     for adj in graphs:
         # trim padding: find actual number of active nodes
         deg = adj.sum(dim=1)
-        active = (deg > 0).sum().item()
+        active = int((deg > 0).sum().item())
         if active == 0:
             active = adj.size(0)
 
-        adj_trimmed = adj[:active, :active]
+        # enforce target node count: keep the top-degree nodes
+        if active > target_n:
+            # keep the target_n nodes with highest degree
+            degrees = adj.sum(dim=1)
+            _, keep = torch.topk(degrees, target_n)
+            keep = keep.sort().values
+            adj = adj[keep][:, keep]
+            active = target_n
+        elif active < target_n:
+            # keep all active nodes as-is (model generated fewer)
+            adj = adj[:active, :active]
+        else:
+            adj = adj[:active, :active]
+
+        adj_trimmed = adj
         edge_index = adj_to_edge_index(adj_trimmed)
 
         results.append({
@@ -89,7 +108,7 @@ def generate(req: GenerateRequest):
         })
 
     return {"graphs": results, "conditions": {
-        "num_nodes": req.num_nodes,
+        "num_nodes": target_n,
         "density": req.density,
         "clustering": req.clustering,
     }}

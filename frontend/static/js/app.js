@@ -175,7 +175,7 @@ document.getElementById('btn-generate')?.addEventListener('click', async functio
   setLoading(this, true);
   try {
     const params = {
-      num_nodes: +document.getElementById('cond-nodes').value / 50, // normalize to [0, 1]
+      num_nodes: +document.getElementById('cond-nodes').value,
       density: +document.getElementById('cond-density').value,
       clustering: +document.getElementById('cond-clustering').value,
       num_samples: +document.getElementById('gen-num-samples').value,
@@ -268,9 +268,8 @@ document.getElementById('btn-interpolate')?.addEventListener('click', async func
       steps: +document.getElementById('interp-steps').value,
     };
     const result = await api.interpolateVAE(params);
-    // show interpolation steps in the graph grid
-    const graphs = [result.source, ...result.steps, result.target];
-    renderGraphGrid('vae-graph-grid', graphs);
+    // steps already include source (alpha=0) and target (alpha=1)
+    renderGraphGrid('vae-graph-grid', result.steps);
   } catch (e) {
     log('vae-status-log', `Interpolate error: ${e.message}`);
   }

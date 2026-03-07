@@ -413,7 +413,9 @@ def train_diffusion(model: DenoisingDiffusion, graphs: list[tuple[Tensor, Tensor
     for epoch in range(epochs):
         epoch_loss = 0.0
         for features, adj in graphs:
-            loss = model(features, adj)
+            # Pad to max_nodes so training matches generation size
+            adj_pad, feat_pad = _pad_graph(adj, features, model.max_nodes)
+            loss = model(feat_pad, adj_pad)
 
             optimizer.zero_grad()
             loss.backward()
@@ -477,6 +479,10 @@ def interpolate_latent(
     with torch.no_grad():
         feat1, adj1 = graph1
         feat2, adj2 = graph2
+
+        # Pad graphs to max_nodes to match training distribution
+        adj1, feat1 = _pad_graph(adj1, feat1, model.max_nodes)
+        adj2, feat2 = _pad_graph(adj2, feat2, model.max_nodes)
 
         mu1, _ = model.encoder(feat1, adj1)
         mu2, _ = model.encoder(feat2, adj2)
