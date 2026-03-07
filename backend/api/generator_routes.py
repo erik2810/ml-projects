@@ -23,7 +23,7 @@ class TrainRequest(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    num_nodes: int = 10
+    num_nodes: float = 10
     density: float = 0.3
     clustering: float = 0.3
     num_samples: int = 4
@@ -63,9 +63,14 @@ def generate(req: GenerateRequest):
 
     model = _state["model"]
 
-    # Normalize node count to [0, 1] using model's max_nodes
-    target_n = min(max(req.num_nodes, 2), model.max_nodes)
-    nodes_norm = target_n / model.max_nodes
+    # Accept both raw node count (e.g. 10) and legacy normalized values (0-1).
+    # Values <= 1.0 are treated as pre-normalized fractions.
+    if req.num_nodes <= 1.0:
+        nodes_norm = max(0.0, min(req.num_nodes, 1.0))
+        target_n = max(2, round(nodes_norm * model.max_nodes))
+    else:
+        target_n = min(max(int(round(req.num_nodes)), 2), model.max_nodes)
+        nodes_norm = target_n / model.max_nodes
 
     conditions = torch.tensor(
         [[nodes_norm, req.density, req.clustering]],

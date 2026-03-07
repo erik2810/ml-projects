@@ -261,19 +261,154 @@
   drawChart('gnn-chart', EXAMPLES.trainingCurves.gnn, 'trainLoss', { color: COLOR_A, yLabel: 'Train loss' });
 
   // ── Generator section ───────────────────────────────────────────────────
-  function renderExampleGraphs() {
+
+  // Client-side random graph generators
+  function generateErdosRenyi(n, p) {
+    const edges = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (Math.random() < p) edges.push([i, j]);
+      }
+    }
+    return edges;
+  }
+
+  function generateBarabasiAlbert(n, m) {
+    // Start with a fully connected seed of m+1 nodes
+    const seed = Math.min(m + 1, n);
+    const edges = [];
+    const degree = new Array(n).fill(0);
+
+    for (let i = 0; i < seed; i++) {
+      for (let j = i + 1; j < seed; j++) {
+        edges.push([i, j]);
+        degree[i]++;
+        degree[j]++;
+      }
+    }
+
+    // Preferential attachment for remaining nodes
+    for (let v = seed; v < n; v++) {
+      const totalDeg = degree.reduce((s, d) => s + d, 0) || 1;
+      const targets = new Set();
+      let attempts = 0;
+      while (targets.size < Math.min(m, v) && attempts < 200) {
+        let r = Math.random() * totalDeg;
+        for (let u = 0; u < v; u++) {
+          r -= degree[u];
+          if (r <= 0 && !targets.has(u)) {
+            targets.add(u);
+            break;
+          }
+        }
+        attempts++;
+      }
+      for (const u of targets) {
+        edges.push([u, v]);
+        degree[u]++;
+        degree[v]++;
+      }
+    }
+    return edges;
+  }
+
+  function generateWattsStrogatz(n, k, p) {
+    const edges = [];
+    const edgeSet = new Set();
+    const addEdge = (a, b) => {
+      const lo = Math.min(a, b), hi = Math.max(a, b);
+      const key = lo + ',' + hi;
+      if (!edgeSet.has(key)) { edgeSet.add(key); edges.push([lo, hi]); }
+    };
+
+    // Ring lattice
+    for (let i = 0; i < n; i++) {
+      for (let j = 1; j <= Math.floor(k / 2); j++) {
+        addEdge(i, (i + j) % n);
+      }
+    }
+
+    // Rewire with probability p
+    for (let i = 0; i < n; i++) {
+      for (let j = 1; j <= Math.floor(k / 2); j++) {
+        if (Math.random() < p) {
+          const oldTarget = (i + j) % n;
+          const lo = Math.min(i, oldTarget), hi = Math.max(i, oldTarget);
+          const oldKey = lo + ',' + hi;
+          edgeSet.delete(oldKey);
+          const idx = edges.findIndex(e => e[0] === lo && e[1] === hi);
+          if (idx >= 0) edges.splice(idx, 1);
+
+          let newTarget;
+          let tries = 0;
+          do {
+            newTarget = Math.floor(Math.random() * n);
+            tries++;
+          } while ((newTarget === i || edgeSet.has(Math.min(i, newTarget) + ',' + Math.max(i, newTarget))) && tries < 50);
+          if (tries < 50) addEdge(i, newTarget);
+          else { edgeSet.add(oldKey); edges.push([lo, hi]); }
+        }
+      }
+    }
+    return edges;
+  }
+
+  function computeGraphProps(n, edges) {
+    const maxEdges = n * (n - 1) / 2;
+    const density = maxEdges > 0 ? edges.length / maxEdges : 0;
+
+    // Clustering coefficient
+    const adj = {};
+    for (let i = 0; i < n; i++) adj[i] = new Set();
+    for (const [a, b] of edges) { adj[a].add(b); adj[b].add(a); }
+
+    let ccSum = 0;
+    for (let i = 0; i < n; i++) {
+      const neighbors = [...adj[i]];
+      const k = neighbors.length;
+      if (k < 2) continue;
+      let triangles = 0;
+      for (let a = 0; a < k; a++) {
+        for (let b = a + 1; b < k; b++) {
+          if (adj[neighbors[a]].has(neighbors[b])) triangles++;
+        }
+      }
+      ccSum += (2 * triangles) / (k * (k - 1));
+    }
+    const avgClustering = n > 0 ? ccSum / n : 0;
+
+    return { numNodes: n, numEdges: edges.length, density, avgClustering };
+  }
+
+  function generateGraphsFromSliders() {
+    const n = parseInt(document.getElementById('ctrl-nodes').value, 10);
+    const targetDensity = parseFloat(document.getElementById('ctrl-density').value);
+    const typeFilter = document.getElementById('ctrl-type').value;
+
+    const generators = [];
+    if (typeFilter === 'all' || typeFilter === 'er') {
+      generators.push({ type: 'er', label: 'Erdos-Renyi', fn: () => generateErdosRenyi(n, targetDensity) });
+      generators.push({ type: 'er', label: 'Erdos-Renyi', fn: () => generateErdosRenyi(n, targetDensity) });
+    }
+    if (typeFilter === 'all' || typeFilter === 'ba') {
+      const m = Math.max(1, Math.round(targetDensity * (n - 1) / 2));
+      generators.push({ type: 'ba', label: 'Barabasi-Albert', fn: () => generateBarabasiAlbert(n, m) });
+      generators.push({ type: 'ba', label: 'Barabasi-Albert', fn: () => generateBarabasiAlbert(n, Math.max(1, m - 1)) });
+    }
+    if (typeFilter === 'all' || typeFilter === 'ws') {
+      const k = Math.max(2, Math.round(targetDensity * (n - 1)));
+      generators.push({ type: 'ws', label: 'Watts-Strogatz', fn: () => generateWattsStrogatz(n, k, 0.2) });
+      generators.push({ type: 'ws', label: 'Watts-Strogatz', fn: () => generateWattsStrogatz(n, k, 0.5) });
+    }
+
     const grid = document.getElementById('gen-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    let graphsToShow = EXAMPLES.generatedGraphs;
-    const typeFilter = document.getElementById('ctrl-type').value;
-    if (typeFilter !== 'all') {
-      const prefix = {er: 'erdos', ba: 'barabasi', ws: 'watts'}[typeFilter];
-      graphsToShow = graphsToShow.filter(g => g.type.startsWith(prefix));
-    }
+    for (const gen of generators) {
+      const edges = gen.fn();
+      const props = computeGraphProps(n, edges);
 
-    for (const g of graphsToShow) {
       const card = document.createElement('div');
       card.className = 'graph-card';
 
@@ -284,18 +419,17 @@
       const info = document.createElement('div');
       info.className = 'graph-card-info';
       info.innerHTML = `
-        <h4>${g.name}</h4>
+        <h4>${gen.label}</h4>
         <div class="graph-props">
-          <span>Nodes:</span> <span>${g.properties.numNodes}</span>
-          <span>Edges:</span> <span>${g.properties.numEdges}</span>
-          <span>Density:</span> <span>${g.properties.density.toFixed(3)}</span>
-          <span>Clustering:</span> <span>${g.properties.avgClustering.toFixed(3)}</span>
+          <span>Nodes:</span> <span>${props.numNodes}</span>
+          <span>Edges:</span> <span>${props.numEdges}</span>
+          <span>Density:</span> <span>${props.density.toFixed(3)}</span>
+          <span>Clustering:</span> <span>${props.avgClustering.toFixed(3)}</span>
         </div>`;
       card.appendChild(info);
       grid.appendChild(card);
 
-      // render small force graph
-      renderSmallGraph(viz, g.nodes.length, g.edges);
+      renderSmallGraph(viz, n, edges);
     }
   }
 
@@ -333,7 +467,7 @@
     setTimeout(() => sim.stop(), 3000);
   }
 
-  renderExampleGraphs();
+  generateGraphsFromSliders();
 
   // slider updates
   document.querySelectorAll('.generator-controls input[type="range"]').forEach(input => {
@@ -347,8 +481,8 @@
     }
   });
 
-  document.getElementById('btn-gen-new')?.addEventListener('click', renderExampleGraphs);
-  document.getElementById('ctrl-type')?.addEventListener('change', renderExampleGraphs);
+  document.getElementById('btn-gen-new')?.addEventListener('click', generateGraphsFromSliders);
+  document.getElementById('ctrl-type')?.addEventListener('change', generateGraphsFromSliders);
 
   // ── VAE: interpolation ──────────────────────────────────────────────────
   const interpSteps = EXAMPLES.interpolation.steps;
