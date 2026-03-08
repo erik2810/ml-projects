@@ -11,8 +11,14 @@ from .metrics import (
 from .mesh_utils import (
     parse_obj,
     mesh_to_spatial_graph,
+    cube,
+    octahedron,
     deformed_icosahedron,
+    hexagonal_prism,
+    star_3d,
+    low_poly_torus,
     low_poly_rock,
+    showcase_meshes,
     generate_mesh_dataset,
 )
 from .mesh_vae import SpatialMeshVAE, train_mesh_vae

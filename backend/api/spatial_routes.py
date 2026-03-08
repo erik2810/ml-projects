@@ -16,7 +16,7 @@ from backend.core.spatial.metrics import (
 )
 from backend.core.spatial.tree_gen import SpatialTreeVAE, train_spatial_vae
 from backend.core.spatial.diffusion3d import SpatialGraphDiffusion, train_spatial_diffusion
-from backend.core.spatial.mesh_utils import generate_mesh_dataset
+from backend.core.spatial.mesh_utils import generate_mesh_dataset, showcase_meshes
 from backend.core.spatial.mesh_vae import SpatialMeshVAE, train_mesh_vae
 from backend.config import DEVICE, CHECKPOINT_DIR
 
@@ -31,6 +31,7 @@ _state = {
     'mesh_vae_model': None,
     'mesh_train_data': None,
     'mesh_procedural': None,
+    'mesh_procedural_names': None,
 }
 
 
@@ -352,25 +353,43 @@ def interpolate_endpoint(req: InterpolateRequest):
 # ---------------------------------------------------------------------------
 
 class MeshGenerateRequest(BaseModel):
-    mesh_type: str = "mixed"
-    num_meshes: int = 4
+    mesh_type: str = "showcase"
+    num_meshes: int = 6
     num_nodes: int = 24
 
 
 @router.post("/mesh/generate")
 def generate_meshes(req: MeshGenerateRequest):
-    """Generate procedural low-poly meshes (rocks, icosahedra)."""
-    if req.mesh_type not in ("rock", "icosahedron", "mixed"):
-        raise HTTPException(400, "mesh_type must be 'rock', 'icosahedron', or 'mixed'")
+    """Generate procedural low-poly meshes.
 
-    graphs = generate_mesh_dataset(
-        num=req.num_meshes,
-        mesh_type=req.mesh_type,
-        num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
-        device=DEVICE,
-    )
+    mesh_type='showcase' returns the six canonical shapes (Cube,
+    Octahedron, Icosahedron, Hexagonal Prism, 3D Star, Torus).
+    Other types generate random meshes for training variety.
+    """
+    if req.mesh_type == "showcase":
+        pairs = showcase_meshes(device=DEVICE)
+        names = [name for name, _ in pairs]
+        graphs = [g for _, g in pairs]
+    elif req.mesh_type in ("rock", "icosahedron", "mixed"):
+        graphs = generate_mesh_dataset(
+            num=req.num_meshes,
+            mesh_type=req.mesh_type,
+            num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
+            device=DEVICE,
+        )
+        names = [f"Mesh {i}" for i in range(len(graphs))]
+    else:
+        raise HTTPException(400, "mesh_type must be 'showcase', 'rock', 'icosahedron', or 'mixed'")
+
     _state['mesh_procedural'] = graphs
-    return {"graphs": [_serialize_graph(g) for g in graphs]}
+    _state['mesh_procedural_names'] = names
+
+    serialized = []
+    for name, g in zip(names, graphs):
+        d = _serialize_graph(g)
+        d["name"] = name
+        serialized.append(d)
+    return {"graphs": serialized}
 
 
 class TrainMeshVAERequest(BaseModel):
@@ -455,6 +474,10 @@ def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
     if req.graph_idx_a >= len(data) or req.graph_idx_b >= len(data):
         raise HTTPException(400, f"Index out of range (have {len(data)} procedural meshes).")
 
+    names = _state.get('mesh_procedural_names') or []
+    name_a = names[req.graph_idx_a] if req.graph_idx_a < len(names) else f"#{req.graph_idx_a}"
+    name_b = names[req.graph_idx_b] if req.graph_idx_b < len(names) else f"#{req.graph_idx_b}"
+
     model = _state['mesh_vae_model']
     g1 = data[req.graph_idx_a].to(DEVICE)
     g2 = data[req.graph_idx_b].to(DEVICE)
@@ -464,4 +487,6 @@ def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
         "graphs": [_serialize_graph(g) for g in interps],
         "source": _serialize_graph(g1),
         "target": _serialize_graph(g2),
+        "source_name": name_a,
+        "target_name": name_b,
     }

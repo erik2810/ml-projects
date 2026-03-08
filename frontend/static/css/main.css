@@ -681,6 +681,17 @@ input[type="range"]::-moz-range-thumb {
   height: 100%;
 }
 
+.spatial-cell-name {
+  position: absolute;
+  bottom: 22px;
+  left: 8px;
+  right: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
 .spatial-cell-label {
   position: absolute;
   bottom: 6px;

@@ -5,9 +5,15 @@ Procedural generators produce SpatialGraph objects with cycles (general
 graphs, not trees). These are used for training the mesh VAE and
 demonstrating latent-space interpolation between arbitrary 3D shapes.
 
-Two shape primitives:
-    - Deformed icosahedron: 12-vertex irregular polyhedron based on
-      golden-ratio coordinates with random perturbation (30 edges)
+Six showcase primitives:
+    - Cube (8 vertices, 12 edges)
+    - Octahedron (6 vertices, 12 edges)
+    - Deformed icosahedron (12 vertices, 30 edges)
+    - Hexagonal prism (12 vertices, 18 edges)
+    - 3D star / stellated dodecahedron (14 vertices, 24 edges)
+    - Low-poly torus (32 vertices, 64 edges)
+
+Additional generators for training data:
     - Low-poly rock: random points on a deformed sphere with K-NN
       adjacency — fully asymmetric, 20-40 vertices
 
@@ -83,6 +89,181 @@ def mesh_to_spatial_graph(
 # ---------------------------------------------------------------------------
 # Procedural mesh generators
 # ---------------------------------------------------------------------------
+
+def cube(
+    scale: float = 1.0,
+    noise: float = 0.08,
+    device: torch.device | None = None,
+) -> SpatialGraph:
+    """Generate a deformed cube (8 vertices, 12 edges)."""
+    raw = [
+        [-1, -1, -1], [-1, -1,  1], [-1,  1, -1], [-1,  1,  1],
+        [ 1, -1, -1], [ 1, -1,  1], [ 1,  1, -1], [ 1,  1,  1],
+    ]
+    pos = torch.tensor(raw, dtype=torch.float32, device=device) * scale
+    pos = pos + torch.randn_like(pos) * noise
+    edges = {
+        (0,1), (0,2), (0,4), (1,3), (1,5), (2,3),
+        (2,6), (3,7), (4,5), (4,6), (5,7), (6,7),
+    }
+    return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
+
+
+def octahedron(
+    scale: float = 1.0,
+    noise: float = 0.06,
+    device: torch.device | None = None,
+) -> SpatialGraph:
+    """Generate a deformed octahedron (6 vertices, 12 edges)."""
+    raw = [
+        [ 1, 0, 0], [-1, 0, 0], [0,  1, 0],
+        [0, -1, 0], [ 0, 0, 1], [0, 0, -1],
+    ]
+    pos = torch.tensor(raw, dtype=torch.float32, device=device) * scale
+    pos = pos + torch.randn_like(pos) * noise
+    edges = {
+        (0,2), (0,3), (0,4), (0,5),
+        (1,2), (1,3), (1,4), (1,5),
+        (2,4), (2,5), (3,4), (3,5),
+    }
+    return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
+
+
+def hexagonal_prism(
+    scale: float = 1.0,
+    noise: float = 0.06,
+    device: torch.device | None = None,
+) -> SpatialGraph:
+    """Generate a deformed hexagonal prism (12 vertices, 18 edges).
+
+    Bottom hexagon (nodes 0-5) and top hexagon (nodes 6-11) connected
+    by vertical struts.
+    """
+    verts = []
+    for ring_y, offset in [(-1.0, 0), (1.0, 6)]:
+        for k in range(6):
+            angle = math.pi / 3 * k
+            x = math.cos(angle) * scale
+            z = math.sin(angle) * scale
+            verts.append([x, ring_y * scale, z])
+
+    pos = torch.tensor(verts, dtype=torch.float32, device=device)
+    pos = pos + torch.randn_like(pos) * noise
+
+    edges = set()
+    for i in range(6):
+        edges.add((i, (i + 1) % 6))          # bottom ring
+        edges.add((6 + i, 6 + (i + 1) % 6))  # top ring
+        edges.add((i, 6 + i))                 # vertical struts
+    return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
+
+
+def star_3d(
+    scale: float = 1.0,
+    noise: float = 0.04,
+    device: torch.device | None = None,
+) -> SpatialGraph:
+    """Generate a 3D star shape (14 vertices, 24 edges).
+
+    An outer ring of 6 tip vertices connected through a top and bottom
+    apex, forming a stellated shape.
+    """
+    verts = []
+    # 6 outer tip vertices on a ring (alternating radii for star shape)
+    for k in range(6):
+        angle = math.pi / 3 * k
+        r = scale * (1.1 if k % 2 == 0 else 0.4)
+        x = math.cos(angle) * r
+        z = math.sin(angle) * r
+        y = (0.38 if k % 2 == 0 else -0.38) * scale
+        verts.append([x, y, z])
+    # 6 inner ring vertices (half radius)
+    for k in range(6):
+        angle = math.pi / 3 * k
+        r = scale * (0.4 if k % 2 == 0 else 0.35)
+        x = math.cos(angle) * r
+        z = math.sin(angle) * r
+        y = (-0.38 if k % 2 == 0 else 0.38) * scale
+        verts.append([x, y, z])
+    # top and bottom apex
+    verts.append([0,  0.55 * scale, 0])  # node 12 = top
+    verts.append([0, -0.55 * scale, 0])  # node 13 = bottom
+
+    pos = torch.tensor(verts, dtype=torch.float32, device=device)
+    pos = pos + torch.randn_like(pos) * noise
+
+    edges = set()
+    # outer ring
+    for k in range(6):
+        edges.add((k, (k + 1) % 6))
+        edges.add((6 + k, 6 + (k + 1) % 6))
+    # connect even outer tips to top apex, odd to bottom
+    for k in range(0, 6, 2):
+        edges.add((k, 12))
+        edges.add((k, 13))
+    for k in range(1, 6, 2):
+        edges.add((k, 12))
+        edges.add((k, 13))
+    return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
+
+
+def low_poly_torus(
+    major_r: float = 1.0,
+    minor_r: float = 0.35,
+    n_major: int = 8,
+    n_minor: int = 4,
+    noise: float = 0.04,
+    device: torch.device | None = None,
+) -> SpatialGraph:
+    """Generate a low-poly torus (n_major * n_minor vertices).
+
+    Default: 8×4 = 32 vertices, 64 edges. Each ring of n_minor vertices
+    is connected to the next ring, wrapping around for both loops.
+    """
+    verts = []
+    for i in range(n_major):
+        theta = 2 * math.pi * i / n_major
+        cx = major_r * math.cos(theta)
+        cz = major_r * math.sin(theta)
+        for j in range(n_minor):
+            phi = 2 * math.pi * j / n_minor
+            x = (major_r + minor_r * math.cos(phi)) * math.cos(theta)
+            y = minor_r * math.sin(phi)
+            z = (major_r + minor_r * math.cos(phi)) * math.sin(theta)
+            verts.append([x, y, z])
+
+    pos = torch.tensor(verts, dtype=torch.float32, device=device)
+    pos = pos + torch.randn_like(pos) * noise
+
+    edges = set()
+    total = n_major * n_minor
+    for i in range(n_major):
+        for j in range(n_minor):
+            idx = i * n_minor + j
+            # connect within ring
+            next_j = i * n_minor + (j + 1) % n_minor
+            edges.add((min(idx, next_j), max(idx, next_j)))
+            # connect to next ring
+            next_i = ((i + 1) % n_major) * n_minor + j
+            edges.add((min(idx, next_i), max(idx, next_i)))
+    return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
+
+
+def showcase_meshes(device: torch.device | None = None) -> list[tuple[str, SpatialGraph]]:
+    """Return the six canonical showcase shapes with their names.
+
+    These are the fixed procedural meshes displayed in the UI grid
+    and available for latent-space interpolation.
+    """
+    return [
+        ("Cube",                cube(device=device)),
+        ("Octahedron",          octahedron(device=device)),
+        ("Deformed Icosahedron", deformed_icosahedron(device=device)),
+        ("Hexagonal Prism",     hexagonal_prism(device=device)),
+        ("3D Star",             star_3d(device=device)),
+        ("Low-Poly Torus",      low_poly_torus(device=device)),
+    ]
+
 
 def deformed_icosahedron(
     scale: float = 1.0,

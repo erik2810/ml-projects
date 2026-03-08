@@ -422,6 +422,7 @@
             <div class="field">
               <label for="mesh-type">Mesh type</label>
               <select id="mesh-type">
+                <option value="showcase">Showcase (6 distinct shapes)</option>
                 <option value="mixed">Mixed (rocks + icosahedra)</option>
                 <option value="rock">Low-poly rocks</option>
                 <option value="icosahedron">Deformed icosahedra</option>
@@ -484,14 +485,18 @@
           <hr class="divider">
 
           <h3 class="card-title" style="margin-top:4px">Latent Interpolation</h3>
-          <p class="field-hint">Indices reference the procedural meshes shown above.</p>
+          <p class="field-hint">Select two procedural meshes from the grid above.</p>
           <div class="field">
-            <label for="mesh-interp-a">Source mesh #</label>
-            <input id="mesh-interp-a" type="number" value="0" min="0" max="3">
+            <label for="mesh-interp-a">Source mesh</label>
+            <select id="mesh-interp-a">
+              <option value="0">0 — (view meshes first)</option>
+            </select>
           </div>
           <div class="field">
-            <label for="mesh-interp-b">Target mesh #</label>
-            <input id="mesh-interp-b" type="number" value="1" min="0" max="3">
+            <label for="mesh-interp-b">Target mesh</label>
+            <select id="mesh-interp-b">
+              <option value="1">1 — (view meshes first)</option>
+            </select>
           </div>
           <div class="field">
             <label for="mesh-interp-steps">Steps</label>

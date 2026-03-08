@@ -438,6 +438,13 @@ function renderSpatialGrid(containerId, graphs) {
     }
 
     const feats = g.features || {};
+    // Show mesh name if available
+    if (g.name) {
+      const nameEl = document.createElement('div');
+      nameEl.className = 'spatial-cell-name';
+      nameEl.textContent = g.name;
+      cell.appendChild(nameEl);
+    }
     const label = document.createElement('div');
     label.className = 'spatial-cell-label';
     const parts = [`n=${g.num_nodes}  e=${g.num_edges}`];
@@ -683,23 +690,29 @@ function renderSpatialMesh(container, graphData) {
 document.getElementById('btn-view-meshes')?.addEventListener('click', async function () {
   setLoading(this, true);
   try {
+    const meshType = document.getElementById('mesh-type').value;
     const params = {
-      mesh_type: document.getElementById('mesh-type').value,
-      num_meshes: 4,
+      mesh_type: meshType,
+      num_meshes: meshType === 'showcase' ? 6 : 4,
       num_nodes: +document.getElementById('mesh-num-nodes').value,
     };
     const result = await api.generateMeshes(params);
     renderSpatialGrid('mesh-3d-grid', result.graphs);
     document.getElementById('mesh-interp-strip').innerHTML = '';
-    // Update interpolation index limits to match displayed meshes
-    const maxIdx = result.graphs.length - 1;
-    const elA = document.getElementById('mesh-interp-a');
-    const elB = document.getElementById('mesh-interp-b');
-    elA.max = maxIdx;
-    elB.max = maxIdx;
-    elA.value = 0;
-    elB.value = Math.min(1, maxIdx);
-    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes (indices 0–${maxIdx})`);
+
+    // Populate source/target dropdowns with shape names
+    const selA = document.getElementById('mesh-interp-a');
+    const selB = document.getElementById('mesh-interp-b');
+    selA.innerHTML = '';
+    selB.innerHTML = '';
+    result.graphs.forEach((g, i) => {
+      const name = g.name || `Mesh ${i}`;
+      selA.innerHTML += `<option value="${i}">${i} — ${name}</option>`;
+      selB.innerHTML += `<option value="${i}">${i} — ${name}</option>`;
+    });
+    selB.value = Math.min(1, result.graphs.length - 1);
+
+    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes`);
   } catch (e) {
     log('mesh-status-log', `Error: ${e.message}`);
   }
@@ -760,6 +773,8 @@ document.getElementById('btn-interp-mesh')?.addEventListener('click', async func
       steps: +document.getElementById('mesh-interp-steps').value,
     };
     const result = await api.interpolateMeshVAE(params);
+    const nameA = result.source_name || `#${idxA}`;
+    const nameB = result.target_name || `#${idxB}`;
 
     // show source + target in grid (the exact procedural meshes)
     renderSpatialGrid('mesh-3d-grid', [result.source, result.target]);
@@ -778,13 +793,13 @@ document.getElementById('btn-interp-mesh')?.addEventListener('click', async func
 
       const label = document.createElement('div');
       label.className = 'interp-step-label';
-      if (i === 0) label.textContent = `Source (#${idxA})`;
-      else if (i === nSteps - 1) label.textContent = `Target (#${idxB})`;
+      if (i === 0) label.textContent = nameA;
+      else if (i === nSteps - 1) label.textContent = nameB;
       else label.textContent = `t=${(i / (nSteps - 1)).toFixed(2)}`;
       step.appendChild(label);
     });
 
-    log('mesh-status-log', `Interpolation: mesh #${idxA} → #${idxB}, ${nSteps} steps`);
+    log('mesh-status-log', `Interpolation: ${nameA} → ${nameB}, ${nSteps} steps`);
   } catch (e) {
     log('mesh-status-log', `Interpolation error: ${e.message}`);
   }
