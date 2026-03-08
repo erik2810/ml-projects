@@ -965,7 +965,7 @@ footer {
 }
 
 .mesh-card-viz {
-  height: 220px;
+  height: 180px;
   background: var(--color-code-bg);
   position: relative;
 }
@@ -1012,24 +1012,20 @@ footer {
 
 /* Mesh interpolation strip */
 .mesh-interp-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 0.75rem;
-  overflow-x: auto;
   padding: 1rem 0;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
 }
 
 .mesh-interp-step {
-  flex: 0 0 auto;
-  width: 140px;
-  scroll-snap-align: start;
   text-align: center;
+  min-width: 0;
 }
 
 .mesh-interp-step-viz {
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  aspect-ratio: 1;
   background: var(--color-code-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -1062,12 +1058,8 @@ footer {
   .mesh-grid {
     grid-template-columns: 1fr;
   }
-  .mesh-interp-step {
-    width: 120px;
-  }
-  .mesh-interp-step-viz {
-    width: 120px;
-    height: 120px;
+  .mesh-interp-strip {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

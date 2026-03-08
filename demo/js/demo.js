@@ -606,8 +606,8 @@
 
   // ── Mesh: Isometric wireframe rendering ───────────────────────────────
   function renderMeshWireframe(container, meshData, opts = {}) {
-    const w = container.clientWidth || 200;
-    const h = container.clientHeight || 200;
+    const w = opts.size || container.clientWidth || 200;
+    const h = opts.size || container.clientHeight || w;
 
     const projected = meshData.positions.map(p => isoProject(p));
 
@@ -708,7 +708,7 @@
 
       strip.appendChild(stepEl);
 
-      renderMeshWireframe(viz, step, { pad: 12, nodeRadius: 2.5 });
+      renderMeshWireframe(viz, step, { pad: 12, nodeRadius: 2.5, size: 140 });
     }
   }
 
