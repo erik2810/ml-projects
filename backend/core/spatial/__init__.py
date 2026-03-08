@@ -18,5 +18,6 @@ from .mesh_utils import (
     star_3d,
     low_poly_torus,
     showcase_meshes,
+    geometric_interpolate,
 )
 from .mesh_vae import SpatialMeshVAE, train_mesh_vae

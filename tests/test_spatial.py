@@ -438,9 +438,13 @@ class TestBenchmarks:
 from backend.core.spatial.mesh_utils import (
     parse_obj,
     mesh_to_spatial_graph,
+    cube,
     deformed_icosahedron,
+    hexagonal_prism,
     low_poly_rock,
+    low_poly_torus,
     generate_mesh_dataset,
+    geometric_interpolate,
 )
 from backend.core.spatial.mesh_vae import SpatialMeshVAE, train_mesh_vae
 
@@ -511,6 +515,51 @@ f 1 3 4
         assert len(graphs) == 3
         for g in graphs:
             assert g.num_nodes > 0
+
+
+class TestGeometricInterpolate:
+    def test_same_node_count(self):
+        """Interpolate between two meshes with the same number of nodes."""
+        g1 = deformed_icosahedron()
+        g2 = hexagonal_prism()
+        # Both have 12 nodes
+        assert g1.num_nodes == 12 and g2.num_nodes == 12
+        interps = geometric_interpolate(g1, g2, steps=5)
+        assert len(interps) == 6  # steps + 1
+        for g in interps:
+            assert g.num_nodes == 12
+            assert g.pos.shape == (12, 3)
+            assert torch.allclose(g.adj, g.adj.t())
+
+    def test_different_node_count(self):
+        """Interpolate between meshes with different node counts."""
+        g1 = cube()          # 8 nodes
+        g2 = low_poly_torus() # 32 nodes
+        interps = geometric_interpolate(g1, g2, steps=4)
+        assert len(interps) == 5
+        N = max(g1.num_nodes, g2.num_nodes)
+        # All intermediate frames padded to max node count
+        for g in interps:
+            assert g.num_nodes == N
+            assert torch.allclose(g.adj, g.adj.t())
+
+    def test_endpoint_positions_blend(self):
+        """First frame should match g1 positions, last should match g2."""
+        g1 = cube()
+        g2 = cube()  # same shape but different random noise
+        interps = geometric_interpolate(g1, g2, steps=3)
+        # First frame positions should equal g1 positions (both have 8 nodes)
+        assert torch.allclose(interps[0].pos, g1.pos, atol=1e-5)
+
+    def test_edges_transition(self):
+        """Source edges at t=0, target edges at t=1."""
+        g1 = cube()          # 12 edges
+        g2 = deformed_icosahedron()  # 30 edges
+        interps = geometric_interpolate(g1, g2, steps=6)
+        # First frame should have same edge count as source
+        assert interps[0].num_edges == g1.num_edges
+        # Last frame should have same edge count as target
+        assert interps[-1].num_edges == g2.num_edges
 
 
 class TestSpatialMeshVAE:

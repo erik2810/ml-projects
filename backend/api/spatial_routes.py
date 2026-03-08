@@ -16,7 +16,9 @@ from backend.core.spatial.metrics import (
 )
 from backend.core.spatial.tree_gen import SpatialTreeVAE, train_spatial_vae
 from backend.core.spatial.diffusion3d import SpatialGraphDiffusion, train_spatial_diffusion
-from backend.core.spatial.mesh_utils import generate_mesh_dataset, showcase_meshes
+from backend.core.spatial.mesh_utils import (
+    generate_mesh_dataset, showcase_meshes, geometric_interpolate,
+)
 from backend.core.spatial.mesh_vae import SpatialMeshVAE, train_mesh_vae
 from backend.config import DEVICE, CHECKPOINT_DIR
 
@@ -452,11 +454,17 @@ class MeshInterpolateRequest(BaseModel):
 
 @router.post("/mesh/vae/interpolate")
 def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
-    """Interpolate between two displayed procedural meshes in latent space."""
-    if _state['mesh_vae_model'] is None:
-        raise HTTPException(400, "No trained mesh VAE.")
+    """Interpolate between two procedural meshes.
+
+    Uses direct geometric blending (position lerp + edge topology
+    transition with greedy node matching) for deterministic, smooth
+    morphs that work without a trained VAE.
+    """
     if _state['mesh_procedural'] is None:
-        raise HTTPException(400, "No procedural meshes. Click 'View Procedural Meshes' first.")
+        # Auto-load showcase shapes
+        pairs = showcase_meshes(device=DEVICE)
+        _state['mesh_procedural'] = [g for _, g in pairs]
+        _state['mesh_procedural_names'] = [name for name, _ in pairs]
 
     data = _state['mesh_procedural']
     if req.graph_idx_a >= len(data) or req.graph_idx_b >= len(data):
@@ -466,14 +474,13 @@ def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
     name_a = names[req.graph_idx_a] if req.graph_idx_a < len(names) else f"#{req.graph_idx_a}"
     name_b = names[req.graph_idx_b] if req.graph_idx_b < len(names) else f"#{req.graph_idx_b}"
 
-    model = _state['mesh_vae_model']
-    g1 = data[req.graph_idx_a].to(DEVICE)
-    g2 = data[req.graph_idx_b].to(DEVICE)
+    g1 = data[req.graph_idx_a]
+    g2 = data[req.graph_idx_b]
 
-    interps = model.interpolate(g1, g2, steps=req.steps)
+    interps = geometric_interpolate(g1, g2, steps=req.steps)
 
-    # Replace the decoded endpoints with the actual source/target
-    # meshes so the strip always starts and ends with the real shapes.
+    # Replace endpoints with the exact original meshes (original
+    # node count, not padded) for pixel-perfect source/target display.
     interps[0] = g1
     interps[-1] = g2
 

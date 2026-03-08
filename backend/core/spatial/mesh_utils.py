@@ -249,6 +249,113 @@ def low_poly_torus(
     return mesh_to_spatial_graph(pos.tolist(), edges, device=device)
 
 
+def geometric_interpolate(
+    g1: SpatialGraph,
+    g2: SpatialGraph,
+    steps: int = 7,
+) -> list[SpatialGraph]:
+    """Smoothly interpolate between two meshes via direct geometry blending.
+
+    Instead of decoding from a learned latent space (which requires a
+    well-trained VAE), this function produces deterministic, visually
+    smooth morphs by:
+
+        1. Padding both meshes to the same node count.
+        2. Greedy nearest-neighbour matching for node correspondence
+           (centred, so shape orientation is respected).
+        3. Linear position interpolation between matched nodes.
+        4. Gradual edge topology transition: shared edges persist,
+           source-only edges are progressively removed, and
+           target-only edges are progressively added.
+
+    Returns ``steps + 1`` frames (including endpoints at t=0 and t=1).
+    """
+    device = g1.pos.device
+    n1, n2 = g1.num_nodes, g2.num_nodes
+    N = max(n1, n2)
+
+    # --- pad positions (phantom nodes at centroid) ---
+    def _pad_pos(pos, n):
+        if n >= N:
+            return pos.clone().detach()
+        centroid = pos.mean(0, keepdim=True)
+        return torch.cat([pos.detach(), centroid.expand(N - n, -1)], 0)
+
+    pos1 = _pad_pos(g1.pos, n1)
+    pos2 = _pad_pos(g2.pos, n2)
+
+    # --- pad adjacency ---
+    def _pad_adj(adj, n):
+        a = torch.zeros(N, N, device=device)
+        a[:n, :n] = adj.detach()
+        return a
+
+    adj1 = _pad_adj(g1.adj, n1)
+    adj2 = _pad_adj(g2.adj, n2)
+
+    # --- greedy nearest-neighbour matching ---
+    # Centre for fair distance comparison, then match
+    c1, c2 = pos1.mean(0), pos2.mean(0)
+    dists = torch.cdist(
+        (pos1 - c1).unsqueeze(0),
+        (pos2 - c2).unsqueeze(0),
+    ).squeeze(0)                                       # (N, N)
+
+    perm = torch.zeros(N, dtype=torch.long, device=device)
+    used = set()
+    for i in range(N):
+        row = dists[i].clone()
+        for u in used:
+            row[u] = float('inf')
+        j = int(row.argmin().item())
+        perm[i] = j
+        used.add(j)
+
+    # Reorder mesh-2 so node indices correspond to mesh-1
+    pos2 = pos2[perm]
+    adj2 = adj2[perm][:, perm]
+
+    # --- classify edges ---
+    src_set: set[tuple[int, int]] = set()
+    tgt_set: set[tuple[int, int]] = set()
+    for i in range(N):
+        for j in range(i + 1, N):
+            if adj1[i, j].item() > 0.5:
+                src_set.add((i, j))
+            if adj2[i, j].item() > 0.5:
+                tgt_set.add((i, j))
+
+    shared   = src_set & tgt_set
+    only_src = sorted(src_set - shared)
+    only_tgt = sorted(tgt_set - shared)
+
+    # --- generate frames ---
+    graphs: list[SpatialGraph] = []
+    for s in range(steps + 1):
+        t = s / steps
+
+        # Linear position interpolation
+        pos_t = (1.0 - t) * pos1 + t * pos2
+
+        # Gradual edge transition
+        n_src_keep = int(round(len(only_src) * (1.0 - t)))
+        n_tgt_add  = int(round(len(only_tgt) * t))
+
+        active = set(shared)
+        active.update(only_src[:n_src_keep])
+        active.update(only_tgt[:n_tgt_add])
+
+        adj_t = torch.zeros(N, N, device=device)
+        for (i, j) in active:
+            adj_t[i, j] = 1.0
+            adj_t[j, i] = 1.0
+
+        parent = torch.full((N,), -1, dtype=torch.long, device=device)
+        graphs.append(SpatialGraph(pos=pos_t, adj=adj_t, parent=parent))
+
+    return graphs
+
+
 def showcase_meshes(device: torch.device | None = None) -> list[tuple[str, SpatialGraph]]:
     """Return the six canonical showcase shapes with their names.
 
