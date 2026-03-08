@@ -202,9 +202,9 @@ nav .container {
 }
 
 .hero .tagline {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   color: var(--color-text-mute);
-  max-width: 50ch;
+  max-width: 58ch;
   margin: 0 auto 2rem;
   line-height: 1.6;
 }
@@ -214,6 +214,26 @@ nav .container {
   justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.hero-stack {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stack-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  border: 1px solid rgba(99,102,241,0.15);
+  padding: 0.2em 0.65em;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
 }
 
 .btn {
@@ -675,10 +695,8 @@ footer {
 }
 
 .footer-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
 }
 
@@ -854,7 +872,7 @@ footer {
   }
 
   .footer-content {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .metrics-grid {
@@ -946,6 +964,11 @@ footer {
   gap: 3rem;
 }
 
+.mesh-subtitle {
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
 .mesh-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1010,12 +1033,109 @@ footer {
   stroke-width: 0.8;
 }
 
-/* Mesh interpolation strip */
+/* --- Method Panel --- */
+.method-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 2rem;
+}
+
+.method-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.method-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.method-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(99,102,241,0.2);
+}
+
+.method-step strong {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  display: block;
+  margin-bottom: 0.2em;
+}
+
+.method-step p {
+  font-size: 0.88rem;
+  color: var(--color-text-mute);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+.method-step code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--color-code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: var(--color-accent);
+}
+
+/* --- Interpolation Strips (multiple) --- */
+.interp-subtitle {
+  font-size: 0.92rem;
+  color: var(--color-text-mute);
+  margin-bottom: 1.5rem;
+}
+
+.interp-pair {
+  margin-bottom: 2rem;
+}
+
+.interp-pair:last-child {
+  margin-bottom: 0;
+}
+
+.interp-pair-title {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+.interp-pair-title .pair-arrow {
+  color: var(--color-text-mute);
+  font-size: 1.1em;
+}
+
+.interp-pair-meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-mute);
+  margin-bottom: 0.5rem;
+}
+
 .mesh-interp-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 0.75rem;
-  padding: 1rem 0;
+  padding: 0.5rem 0;
 }
 
 .mesh-interp-step {
@@ -1041,6 +1161,24 @@ footer {
   font-weight: 600;
 }
 
+.mesh-interp-step.is-endpoint .mesh-interp-step-viz {
+  border-color: #ec4899;
+  border-width: 1.5px;
+}
+
+.mesh-interp-step.is-endpoint .mesh-interp-step-label {
+  color: #ec4899;
+  font-weight: 700;
+}
+
+/* Architecture description */
+.arch-desc {
+  font-size: 0.9rem;
+  color: var(--color-text-mute);
+  margin-bottom: 0.5rem;
+  max-width: 65ch;
+}
+
 /* --- Responsive: spatial & mesh --- */
 @media (max-width: 900px) {
   .spatial-layout {
@@ -1060,6 +1198,10 @@ footer {
   }
   .mesh-interp-strip {
     grid-template-columns: repeat(4, 1fr);
+  }
+  .method-step {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }
 

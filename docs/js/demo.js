@@ -32,7 +32,6 @@
 
   const COLOR_A = '#6366f1';
   const COLOR_B = '#f59e0b';
-  const COLOR_EDGE = '#c7c7d4';
 
   // ── Scroll animations ───────────────────────────────────────────────────
   const observer = new IntersectionObserver((entries) => {
@@ -125,7 +124,6 @@
     if (!karateHandle) return;
     const {nodes, links, linkSel, nodeSel} = karateHandle;
 
-    // animate in waves from node 0
     const adj = {};
     for (const {source, target} of links) {
       const s = typeof source === 'object' ? source.id : source;
@@ -144,7 +142,6 @@
       step++;
       const nextFrontier = [];
 
-      // highlight current edges
       linkSel.each(function (d) {
         const s = typeof d.source === 'object' ? d.source.id : d.source;
         const t = typeof d.target === 'object' ? d.target.id : d.target;
@@ -153,7 +150,6 @@
         }
       });
 
-      // activate new nodes
       for (const nid of frontier) {
         for (const neighbor of (adj[nid] || [])) {
           if (!visited.has(neighbor)) {
@@ -175,14 +171,13 @@
       frontier = nextFrontier;
       if (frontier.length > 0) setTimeout(wave, 600);
       else {
-        // cleanup
         setTimeout(() => {
           linkSel.classed('message-active', false);
           nodeSel.classed('pulse', false);
         }, 1000);
       }
     }
-    // reset first
+
     linkSel.classed('message-active', false).classed('highlighted', false);
     nodeSel.classed('pulse', false);
     nodes.forEach(n => n.messageStep = -1);
@@ -261,8 +256,6 @@
   drawChart('gnn-chart', EXAMPLES.trainingCurves.gnn, 'trainLoss', { color: COLOR_A, yLabel: 'Train loss' });
 
   // ── Generator section ───────────────────────────────────────────────────
-
-  // Client-side random graph generators
   function generateErdosRenyi(n, p) {
     const edges = [];
     for (let i = 0; i < n; i++) {
@@ -274,7 +267,6 @@
   }
 
   function generateBarabasiAlbert(n, m) {
-    // Start with a fully connected seed of m+1 nodes
     const seed = Math.min(m + 1, n);
     const edges = [];
     const degree = new Array(n).fill(0);
@@ -287,7 +279,6 @@
       }
     }
 
-    // Preferential attachment for remaining nodes
     for (let v = seed; v < n; v++) {
       const totalDeg = degree.reduce((s, d) => s + d, 0) || 1;
       const targets = new Set();
@@ -321,14 +312,12 @@
       if (!edgeSet.has(key)) { edgeSet.add(key); edges.push([lo, hi]); }
     };
 
-    // Ring lattice
     for (let i = 0; i < n; i++) {
       for (let j = 1; j <= Math.floor(k / 2); j++) {
         addEdge(i, (i + j) % n);
       }
     }
 
-    // Rewire with probability p
     for (let i = 0; i < n; i++) {
       for (let j = 1; j <= Math.floor(k / 2); j++) {
         if (Math.random() < p) {
@@ -357,7 +346,6 @@
     const maxEdges = n * (n - 1) / 2;
     const density = maxEdges > 0 ? edges.length / maxEdges : 0;
 
-    // Clustering coefficient
     const adj = {};
     for (let i = 0; i < n; i++) adj[i] = new Set();
     for (const [a, b] of edges) { adj[a].add(b); adj[b].add(a); }
@@ -469,7 +457,6 @@
 
   generateGraphsFromSliders();
 
-  // slider updates
   document.querySelectorAll('.generator-controls input[type="range"]').forEach(input => {
     const valSpan = document.getElementById(input.id + '-val');
     if (valSpan) {
@@ -504,7 +491,6 @@
     renderInterpolation(+this.value);
   });
 
-  // VAE training chart
   drawChart('vae-chart', EXAMPLES.trainingCurves.vae, 'totalLoss', { color: '#c084fc', yLabel: 'ELBO loss' });
 
   // ── Spatial 3D: Isometric tree rendering ──────────────────────────────
@@ -512,7 +498,6 @@
   const SIN30 = Math.sin(Math.PI / 6);
 
   function isoProject(pos3d) {
-    // isometric projection: (x, y, z) → (screenX, screenY)
     const [x, y, z] = pos3d;
     const sx = (x - z) * COS30;
     const sy = -y + (x + z) * SIN30 * 0.5;
@@ -523,10 +508,8 @@
     const w = container.clientWidth || 200;
     const h = container.clientHeight || 200;
 
-    // project all positions
     const projected = treeData.positions.map(p => isoProject(p));
 
-    // find bounds
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const [sx, sy] of projected) {
       if (sx < minX) minX = sx;
@@ -550,7 +533,6 @@
       .attr('viewBox', `0 0 ${w} ${h}`)
       .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    // edges
     for (const [a, b] of treeData.edges) {
       const [x1, y1] = projected[a];
       const [x2, y2] = projected[b];
@@ -562,7 +544,6 @@
         .attr('y2', cy + (y2 - midY) * scale);
     }
 
-    // nodes
     for (const [sx, sy] of projected) {
       svg.append('circle')
         .attr('class', 'tree-node')
@@ -634,8 +615,8 @@
       .attr('viewBox', `0 0 ${w} ${h}`)
       .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    // edges
     for (const [a, b] of meshData.edges) {
+      if (a >= meshData.positions.length || b >= meshData.positions.length) continue;
       const [x1, y1] = projected[a];
       const [x2, y2] = projected[b];
       svg.append('line')
@@ -646,7 +627,6 @@
         .attr('y2', cy + (y2 - midY) * scale);
     }
 
-    // nodes
     const nodeR = opts.nodeRadius || 3;
     for (const [sx, sy] of projected) {
       svg.append('circle')
@@ -687,32 +667,62 @@
 
   renderMeshGallery();
 
-  // ── Mesh interpolation strip ──────────────────────────────────────────
-  function renderMeshInterpolationStrip() {
-    const strip = document.getElementById('mesh-interp-strip');
-    if (!strip || !EXAMPLES.meshInterpolation) return;
-    strip.innerHTML = '';
+  // ── Mesh interpolation: multiple pairs ─────────────────────────────────
+  function renderMeshInterpolationStrips() {
+    const container = document.getElementById('mesh-interp-strips');
+    const interps = EXAMPLES.meshInterpolations;
+    if (!container || !interps) return;
+    container.innerHTML = '';
 
-    for (const step of EXAMPLES.meshInterpolation.steps) {
-      const stepEl = document.createElement('div');
-      stepEl.className = 'mesh-interp-step';
+    for (const pair of interps) {
+      const pairEl = document.createElement('div');
+      pairEl.className = 'interp-pair';
 
-      const viz = document.createElement('div');
-      viz.className = 'mesh-interp-step-viz';
-      stepEl.appendChild(viz);
+      // Title
+      const title = document.createElement('div');
+      title.className = 'interp-pair-title';
+      title.innerHTML = `${pair.source} <span class="pair-arrow">&rarr;</span> ${pair.target}`;
+      pairEl.appendChild(title);
 
-      const label = document.createElement('div');
-      label.className = 'mesh-interp-step-label';
-      label.textContent = step.label;
-      stepEl.appendChild(label);
+      // Meta info
+      const meta = document.createElement('div');
+      meta.className = 'interp-pair-meta';
+      const srcStep = pair.steps[0];
+      const tgtStep = pair.steps[pair.steps.length - 1];
+      meta.textContent = `${srcStep.num_nodes}v/${srcStep.num_edges}e \u2192 ${tgtStep.num_nodes}v/${tgtStep.num_edges}e \u00b7 ${pair.steps.length} steps`;
+      pairEl.appendChild(meta);
 
-      strip.appendChild(stepEl);
+      // Strip
+      const strip = document.createElement('div');
+      strip.className = 'mesh-interp-strip';
 
-      renderMeshWireframe(viz, step, { pad: 12, nodeRadius: 2.5, size: 140 });
+      for (let i = 0; i < pair.steps.length; i++) {
+        const step = pair.steps[i];
+        const isEndpoint = (i === 0 || i === pair.steps.length - 1);
+
+        const stepEl = document.createElement('div');
+        stepEl.className = 'mesh-interp-step' + (isEndpoint ? ' is-endpoint' : '');
+
+        const viz = document.createElement('div');
+        viz.className = 'mesh-interp-step-viz';
+        stepEl.appendChild(viz);
+
+        const label = document.createElement('div');
+        label.className = 'mesh-interp-step-label';
+        label.textContent = step.label;
+        stepEl.appendChild(label);
+
+        strip.appendChild(stepEl);
+
+        renderMeshWireframe(viz, step, { pad: 12, nodeRadius: 2.5, size: 130 });
+      }
+
+      pairEl.appendChild(strip);
+      container.appendChild(pairEl);
     }
   }
 
-  renderMeshInterpolationStrip();
+  renderMeshInterpolationStrips();
 
   // Mesh VAE training chart
   if (EXAMPLES.trainingCurvesSpatial && EXAMPLES.trainingCurvesSpatial.meshVae) {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Graph ML Lab — Interactive demos for GNNs, conditional graph generation, graph VAEs, spatial 3D tree generation, and mesh latent space interpolation.">
+  <meta name="description" content="Graph ML Lab — From-scratch implementations of graph neural networks, conditional graph generation, variational autoencoders, spatial 3D tree generation, and geometric mesh interpolation.">
   <title>Graph ML Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,10 +29,16 @@
   <section class="hero" id="top">
     <div class="container">
       <h1>Graph ML Lab</h1>
-      <p class="tagline">From-scratch implementations of graph neural networks, conditional graph generation, variational autoencoders, spatial 3D tree generation, and mesh latent space interpolation.</p>
+      <p class="tagline">From-scratch implementations of graph neural networks, conditional graph generation, variational autoencoders, spatial 3D tree generation, and geometric mesh interpolation &mdash; all built with PyTorch, no external graph libraries.</p>
       <div class="hero-links">
         <a href="https://github.com" class="btn btn-primary">View Source</a>
         <a href="#gnn" class="btn btn-outline">Explore Demos</a>
+      </div>
+      <div class="hero-stack">
+        <span class="stack-tag">PyTorch</span>
+        <span class="stack-tag">FastAPI</span>
+        <span class="stack-tag">D3.js</span>
+        <span class="stack-tag">From Scratch</span>
       </div>
     </div>
   </section>
@@ -40,11 +46,11 @@
   <!-- GNN Section -->
   <section id="gnn">
     <div class="container">
-      <span class="section-label">01 — GNN</span>
-      <h2>Graph Neural Network</h2>
+      <span class="section-label">01 &mdash; Graph Neural Network</span>
+      <h2>Semi-Supervised Node Classification</h2>
       <p class="section-desc">
-        Semi-supervised node classification on Zachary's Karate Club graph.
-        All message passing layers implemented from scratch using only PyTorch.
+        GCN and GAT layers implemented from scratch using only PyTorch tensor operations.
+        Evaluated on Zachary's Karate Club graph (34 nodes, 78 edges) with 50% labeled nodes.
       </p>
 
       <div class="gnn-layout fade-in">
@@ -84,7 +90,8 @@
             <h4>Architecture</h4>
             <div class="code-block">
 <span class="keyword">class</span> GCNLayer(nn.Module):
-    <span class="comment"># Kipf & Welling (ICLR 2017)</span>
+    <span class="comment"># Kipf &amp; Welling (ICLR 2017)</span>
+    <span class="comment"># Message passing: aggregate then transform</span>
     <span class="keyword">def</span> forward(self, x, adj):
         a_hat = normalize_adj(adj)
         <span class="keyword">return</span> a_hat @ x @ self.weight</div>
@@ -102,11 +109,11 @@
   <!-- Generator Section -->
   <section id="generator">
     <div class="container">
-      <span class="section-label">02 — Generator</span>
-      <h2>Conditional Graph Generator</h2>
+      <span class="section-label">02 &mdash; Conditional Generator</span>
+      <h2>Conditional Graph Generation</h2>
       <p class="section-desc">
-        A conditional VAE that generates small graphs matching target structural properties.
-        Trained on mixtures of Erdos-Renyi and Barabasi-Albert random graphs.
+        A conditional VAE that generates small graphs matching target structural properties (node count, density, clustering).
+        Trained on mixtures of Erdos-Renyi, Barabasi-Albert, and Watts-Strogatz random graphs.
       </p>
 
       <div class="generator-controls fade-in">
@@ -139,11 +146,11 @@
   <!-- VAE Section -->
   <section id="vae">
     <div class="container">
-      <span class="section-label">03 — VAE & Diffusion</span>
-      <h2>Graph VAE on Social Network Skeletons</h2>
+      <span class="section-label">03 &mdash; VAE &amp; Diffusion</span>
+      <h2>Graph Variational Autoencoder</h2>
       <p class="section-desc">
-        Variational autoencoder that learns a latent representation of small graphs,
-        enabling smooth interpolation and generation of novel network structures.
+        Variational autoencoder that learns a continuous latent representation of graph structure,
+        enabling smooth interpolation between topologically distinct graphs and generation of novel network structures.
       </p>
 
       <div class="vae-layout">
@@ -196,7 +203,7 @@
 
         <!-- Training curve -->
         <div class="chart-container fade-in">
-          <h4>VAE Training Loss</h4>
+          <h4>VAE Training Loss (ELBO)</h4>
           <div class="chart-area" id="vae-chart"></div>
         </div>
       </div>
@@ -206,40 +213,43 @@
   <!-- Spatial 3D Section -->
   <section id="spatial">
     <div class="container">
-      <span class="section-label">04 — Spatial 3D</span>
-      <h2>Spatial Tree Generation</h2>
+      <span class="section-label">04 &mdash; Spatial 3D</span>
+      <h2>Autoregressive Spatial Tree Generation</h2>
       <p class="section-desc">
-        Autoregressive VAE for 3D branching trees and neuron-like morphologies.
-        Each node is placed in continuous 3D space and attached to a parent via learned conditional distributions.
+        A variational autoencoder for trees embedded in continuous 3D space. At each step the decoder
+        selects a parent node (discrete attention), predicts a 3D offset (learned Gaussian), and decides
+        whether to stop &mdash; combining discrete structural decisions with continuous spatial positions.
       </p>
 
       <div class="spatial-layout fade-in">
         <div class="spatial-info-panel">
           <div class="card">
-            <h4>Architecture</h4>
+            <h4>Decoder Loop</h4>
             <div class="code-block">
-<span class="comment"># Autoregressive decoder</span>
-<span class="keyword">for</span> i <span class="keyword">in</span> range(max_nodes):
-    parent = choose_parent(h, mask)
-    pos[i] = predict_pos(h, parent)
-    h = gnn_update(h, adj)</div>
+<span class="comment"># Autoregressive tree construction</span>
+<span class="keyword">for</span> t <span class="keyword">in</span> range(max_nodes):
+    parent = attention(h, nodes)    <span class="comment"># discrete</span>
+    offset = gaussian(h, parent)    <span class="comment"># continuous</span>
+    pos[t] = pos[parent] + offset
+    stop   = sigmoid(stop_head(h))
+    <span class="keyword">if</span> stop > <span class="number">0.5</span>: <span class="keyword">break</span></div>
           </div>
 
           <div class="metrics-grid fade-in fade-in-delay-1">
             <div class="card metric-card">
-              <span class="metric-value" id="m-tree-nodes">25–40</span>
+              <span class="metric-value" id="m-tree-nodes">25&ndash;40</span>
               <span class="metric-label">Nodes</span>
             </div>
             <div class="card metric-card">
-              <span class="metric-value" id="m-tree-branch">2–6</span>
+              <span class="metric-value" id="m-tree-branch">2&ndash;6</span>
               <span class="metric-label">Branch Pts</span>
             </div>
             <div class="card metric-card">
-              <span class="metric-value" id="m-tree-strahler">2–3</span>
+              <span class="metric-value" id="m-tree-strahler">2&ndash;3</span>
               <span class="metric-label">Strahler</span>
             </div>
             <div class="card metric-card">
-              <span class="metric-value" id="m-tree-path">23–41</span>
+              <span class="metric-value" id="m-tree-path">23&ndash;41</span>
               <span class="metric-label">Path Length</span>
             </div>
           </div>
@@ -253,27 +263,64 @@
   <!-- Mesh Interpolation Section -->
   <section id="mesh">
     <div class="container">
-      <span class="section-label">05 — Mesh VAE</span>
-      <h2>Low-Poly Mesh Latent Space Interpolation</h2>
+      <span class="section-label">05 &mdash; 3D Mesh Interpolation</span>
+      <h2>Geometric Mesh Interpolation</h2>
       <p class="section-desc">
-        A graph VAE with inner-product decoder (VGAE) extended to jointly predict 3D positions.
-        Enables smooth interpolation between meshes of different topology in a shared latent space.
+        Smooth interpolation between low-poly 3D meshes with different topology and vertex counts.
+        Uses greedy nearest-neighbour node correspondence, linear position blending, and gradual
+        edge topology transition &mdash; no learned decoder required.
       </p>
 
       <div class="mesh-layout">
         <!-- Procedural Meshes -->
         <div class="fade-in">
-          <h3>Procedural Meshes</h3>
-          <p style="font-size:0.95rem; margin-bottom:1.5rem;">
-            Six distinct low-poly shapes: Platonic solids, prisms, stellated forms, and a torus.
-            Each mesh has unique topology and vertex geometry.
+          <h3>Procedural Mesh Library</h3>
+          <p class="mesh-subtitle">
+            Six distinct low-poly shapes spanning Platonic solids, prisms, stellated forms, and a toroidal surface.
+            Each mesh has fixed topology with randomized vertex perturbation for training diversity.
           </p>
           <div class="mesh-grid" id="mesh-gallery-grid"></div>
+        </div>
+
+        <!-- Method -->
+        <div class="method-panel fade-in">
+          <h3>Interpolation Method</h3>
+          <div class="method-steps">
+            <div class="method-step">
+              <span class="method-step-num">1</span>
+              <div>
+                <strong>Node Correspondence</strong>
+                <p>Centre both meshes at origin. Pad the smaller mesh with phantom nodes at the centroid. Greedily match nodes by nearest-neighbour in 3D.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">2</span>
+              <div>
+                <strong>Position Blending</strong>
+                <p>Linearly interpolate matched node positions: <code>p(t) = (1&minus;t) &middot; p<sub>A</sub> + t &middot; p<sub>B</sub></code></p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">3</span>
+              <div>
+                <strong>Edge Topology Transition</strong>
+                <p>Classify edges as shared, source-only, or target-only. Remove source-only edges proportionally to <em>t</em> and add target-only edges as <em>t</em> increases.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interpolation strips -->
+        <div class="interpolation-panel fade-in" id="mesh-interp-panel">
+          <h3>Interpolation Results</h3>
+          <p class="interp-subtitle">Three shape pairs demonstrating interpolation across varying topology complexity: same vertex count, different vertex count, and reduction.</p>
+          <div id="mesh-interp-strips"></div>
         </div>
 
         <!-- Architecture diagram -->
         <div class="architecture-panel fade-in">
           <h3>Mesh VAE Architecture</h3>
+          <p class="arch-desc">A graph VAE with inner-product decoder (VGAE, Kipf &amp; Welling 2016) extended to jointly predict 3D node positions. Used for generative sampling from the learned latent space.</p>
           <div class="arch-diagram">
             <div class="arch-block input-block">
               <div class="arch-block-title">Input</div>
@@ -297,18 +344,8 @@
             <span class="arch-arrow">&rarr;</span>
             <div class="arch-block output-block">
               <div class="arch-block-title">Output</div>
-              <div class="arch-block-desc">Mesh<br>(A&#x302;, pos&#x302;)</div>
+              <div class="arch-block-desc">Mesh<br>(&#x00C2;, p&#x0302;)</div>
             </div>
-          </div>
-        </div>
-
-        <!-- Interpolation strip -->
-        <div class="interpolation-panel fade-in">
-          <h3>Latent Space Interpolation: Icosahedron → Hexagonal Prism</h3>
-          <div class="mesh-interp-strip" id="mesh-interp-strip"></div>
-          <div class="interpolation-endpoints">
-            <span class="endpoint-label"><span class="endpoint-dot" style="background:#ec4899"></span> Source (icosahedron)</span>
-            <span class="endpoint-label"><span class="endpoint-dot" style="background:#f59e0b"></span> Target (hexagonal prism)</span>
           </div>
         </div>
 
@@ -328,33 +365,45 @@
         <div class="footer-col">
           <h4>References</h4>
           <ul>
-            <li><a href="https://arxiv.org/abs/1609.02907">Kipf & Welling, 2017 (GCN)</a></li>
-            <li><a href="https://arxiv.org/abs/1710.10903">Velickovic et al., 2018 (GAT)</a></li>
-            <li><a href="https://arxiv.org/abs/1802.03480">Simonovsky & Komodakis, 2018 (GraphVAE)</a></li>
-            <li><a href="https://arxiv.org/abs/1611.07308">Kipf & Welling, 2016 (VGAE)</a></li>
-            <li><a href="https://arxiv.org/abs/2006.04159">Luo et al., 2021 (GraphDF)</a></li>
+            <li><a href="https://arxiv.org/abs/1609.02907">Kipf &amp; Welling, 2017 &mdash; GCN</a></li>
+            <li><a href="https://arxiv.org/abs/1710.10903">Velickovic et al., 2018 &mdash; GAT</a></li>
+            <li><a href="https://arxiv.org/abs/1802.03480">Simonovsky &amp; Komodakis, 2018 &mdash; GraphVAE</a></li>
+            <li><a href="https://arxiv.org/abs/1611.07308">Kipf &amp; Welling, 2016 &mdash; VGAE</a></li>
+            <li><a href="https://arxiv.org/abs/2006.04159">Luo et al., 2021 &mdash; GraphDF</a></li>
+            <li><a href="https://arxiv.org/abs/1802.08773">You et al., 2018 &mdash; GraphRNN</a></li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Built With</h4>
+          <h4>Implementation</h4>
           <ul>
-            <li>PyTorch (no NumPy)</li>
-            <li>FastAPI</li>
-            <li>D3.js</li>
+            <li>All models from scratch in PyTorch</li>
+            <li>No graph libraries (PyG, DGL)</li>
+            <li>FastAPI backend</li>
+            <li>D3.js visualization</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Modules</h4>
+          <ul>
+            <li>GCN / GAT node classification</li>
+            <li>Conditional graph CVAE</li>
+            <li>Graph VAE + discrete diffusion</li>
+            <li>Autoregressive spatial tree VAE</li>
+            <li>Geometric mesh interpolation</li>
           </ul>
         </div>
       </div>
 
       <div class="footer-citation">
-        <div class="code-block">@misc{graphmlab,
-  title  = {Graph ML Lab: From-scratch GNN, Generator, VAE, Spatial 3D Trees, and Mesh Interpolation},
-  year   = {2025},
-  url    = {https://github.com/yourusername/ml-projects}
+        <div class="code-block">@misc{graphmllab,
+  title  = {Graph ML Lab: From-Scratch GNN, Generator, VAE, Spatial Trees, and Mesh Interpolation},
+  year   = {2026},
+  url    = {https://github.com}
 }</div>
       </div>
 
       <div class="footer-bottom">
-        <p>MIT License</p>
+        <p>MIT License &middot; 2026</p>
       </div>
     </div>
   </footer>
