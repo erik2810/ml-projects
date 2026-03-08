@@ -17,8 +17,6 @@ from .mesh_utils import (
     hexagonal_prism,
     star_3d,
     low_poly_torus,
-    low_poly_rock,
     showcase_meshes,
-    generate_mesh_dataset,
 )
 from .mesh_vae import SpatialMeshVAE, train_mesh_vae

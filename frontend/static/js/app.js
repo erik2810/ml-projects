@@ -690,13 +690,7 @@ function renderSpatialMesh(container, graphData) {
 document.getElementById('btn-view-meshes')?.addEventListener('click', async function () {
   setLoading(this, true);
   try {
-    const meshType = document.getElementById('mesh-type').value;
-    const params = {
-      mesh_type: meshType,
-      num_meshes: meshType === 'showcase' ? 6 : 4,
-      num_nodes: +document.getElementById('mesh-num-nodes').value,
-    };
-    const result = await api.generateMeshes(params);
+    const result = await api.generateMeshes({ mesh_type: 'showcase', num_meshes: 6 });
     renderSpatialGrid('mesh-3d-grid', result.graphs);
     document.getElementById('mesh-interp-strip').innerHTML = '';
 
@@ -727,9 +721,7 @@ document.getElementById('btn-train-mesh-vae')?.addEventListener('click', async f
 
   try {
     const params = {
-      mesh_type: document.getElementById('mesh-type').value,
       num_train: +document.getElementById('mesh-num-train').value,
-      num_nodes: +document.getElementById('mesh-num-nodes').value,
       hidden_dim: +document.getElementById('mesh-hidden-dim').value,
       latent_dim: +document.getElementById('mesh-latent-dim').value,
       epochs: +document.getElementById('mesh-epochs').value,

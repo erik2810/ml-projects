@@ -420,19 +420,6 @@
           <fieldset class="fieldset">
             <legend>Mesh data</legend>
             <div class="field">
-              <label for="mesh-type">Mesh type</label>
-              <select id="mesh-type">
-                <option value="showcase">Showcase (6 distinct shapes)</option>
-                <option value="mixed">Mixed (rocks + icosahedra)</option>
-                <option value="rock">Low-poly rocks</option>
-                <option value="icosahedron">Deformed icosahedra</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="mesh-num-nodes">Nodes per mesh</label>
-              <input id="mesh-num-nodes" type="number" value="20" min="10" max="50" step="2">
-            </div>
-            <div class="field">
               <label for="mesh-num-train">Training samples</label>
               <input id="mesh-num-train" type="number" value="80" min="20" max="500" step="10">
             </div>
@@ -489,13 +476,23 @@
           <div class="field">
             <label for="mesh-interp-a">Source mesh</label>
             <select id="mesh-interp-a">
-              <option value="0">0 — (view meshes first)</option>
+              <option value="0">0 — Cube</option>
+              <option value="1">1 — Octahedron</option>
+              <option value="2">2 — Icosahedron</option>
+              <option value="3">3 — Hexagonal Prism</option>
+              <option value="4">4 — 3D Star</option>
+              <option value="5">5 — Low-Poly Torus</option>
             </select>
           </div>
           <div class="field">
             <label for="mesh-interp-b">Target mesh</label>
             <select id="mesh-interp-b">
-              <option value="1">1 — (view meshes first)</option>
+              <option value="0">0 — Cube</option>
+              <option value="1">1 — Octahedron</option>
+              <option value="2" selected>2 — Icosahedron</option>
+              <option value="3">3 — Hexagonal Prism</option>
+              <option value="4">4 — 3D Star</option>
+              <option value="5">5 — Low-Poly Torus</option>
             </select>
           </div>
           <div class="field">

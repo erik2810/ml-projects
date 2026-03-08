@@ -355,31 +355,18 @@ def interpolate_endpoint(req: InterpolateRequest):
 class MeshGenerateRequest(BaseModel):
     mesh_type: str = "showcase"
     num_meshes: int = 6
-    num_nodes: int = 24
 
 
 @router.post("/mesh/generate")
 def generate_meshes(req: MeshGenerateRequest):
-    """Generate procedural low-poly meshes.
+    """Generate the six canonical showcase meshes.
 
-    mesh_type='showcase' returns the six canonical shapes (Cube,
-    Octahedron, Icosahedron, Hexagonal Prism, 3D Star, Torus).
-    Other types generate random meshes for training variety.
+    Returns Cube, Octahedron, Icosahedron, Hexagonal Prism,
+    3D Star, and Low-Poly Torus.
     """
-    if req.mesh_type == "showcase":
-        pairs = showcase_meshes(device=DEVICE)
-        names = [name for name, _ in pairs]
-        graphs = [g for _, g in pairs]
-    elif req.mesh_type in ("rock", "icosahedron", "mixed"):
-        graphs = generate_mesh_dataset(
-            num=req.num_meshes,
-            mesh_type=req.mesh_type,
-            num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
-            device=DEVICE,
-        )
-        names = [f"Mesh {i}" for i in range(len(graphs))]
-    else:
-        raise HTTPException(400, "mesh_type must be 'showcase', 'rock', 'icosahedron', or 'mixed'")
+    pairs = showcase_meshes(device=DEVICE)
+    names = [name for name, _ in pairs]
+    graphs = [g for _, g in pairs]
 
     _state['mesh_procedural'] = graphs
     _state['mesh_procedural_names'] = names
@@ -393,9 +380,7 @@ def generate_meshes(req: MeshGenerateRequest):
 
 
 class TrainMeshVAERequest(BaseModel):
-    mesh_type: str = "mixed"
     num_train: int = 100
-    num_nodes: int = 24
     hidden_dim: int = 64
     latent_dim: int = 32
     epochs: int = 50
@@ -407,8 +392,8 @@ def train_mesh_vae_endpoint(req: TrainMeshVAERequest):
     """Train the mesh VAE on synthetic low-poly meshes."""
     graphs = generate_mesh_dataset(
         num=req.num_train,
-        mesh_type=req.mesh_type,
-        num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
+        mesh_type='mixed',
+        num_points_range=(12, 30),
         device=DEVICE,
     )
     # Prepend the displayed procedural meshes so the encoder learns
