@@ -691,7 +691,15 @@ document.getElementById('btn-view-meshes')?.addEventListener('click', async func
     const result = await api.generateMeshes(params);
     renderSpatialGrid('mesh-3d-grid', result.graphs);
     document.getElementById('mesh-interp-strip').innerHTML = '';
-    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes`);
+    // Update interpolation index limits to match displayed meshes
+    const maxIdx = result.graphs.length - 1;
+    const elA = document.getElementById('mesh-interp-a');
+    const elB = document.getElementById('mesh-interp-b');
+    elA.max = maxIdx;
+    elB.max = maxIdx;
+    elA.value = 0;
+    elB.value = Math.min(1, maxIdx);
+    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes (indices 0–${maxIdx})`);
   } catch (e) {
     log('mesh-status-log', `Error: ${e.message}`);
   }
@@ -744,20 +752,23 @@ document.getElementById('btn-gen-mesh-vae')?.addEventListener('click', async fun
 document.getElementById('btn-interp-mesh')?.addEventListener('click', async function () {
   setLoading(this, true);
   try {
+    const idxA = +document.getElementById('mesh-interp-a').value;
+    const idxB = +document.getElementById('mesh-interp-b').value;
     const params = {
-      graph_idx_a: +document.getElementById('mesh-interp-a').value,
-      graph_idx_b: +document.getElementById('mesh-interp-b').value,
+      graph_idx_a: idxA,
+      graph_idx_b: idxB,
       steps: +document.getElementById('mesh-interp-steps').value,
     };
     const result = await api.interpolateMeshVAE(params);
 
-    // show source + target in grid
+    // show source + target in grid (the exact procedural meshes)
     renderSpatialGrid('mesh-3d-grid', [result.source, result.target]);
 
     // render interpolation strip
     const strip = document.getElementById('mesh-interp-strip');
     strip.innerHTML = '';
 
+    const nSteps = result.graphs.length;
     result.graphs.forEach((g, i) => {
       const step = document.createElement('div');
       step.className = 'interp-step spatial-cell';
@@ -765,14 +776,15 @@ document.getElementById('btn-interp-mesh')?.addEventListener('click', async func
 
       renderSpatialMesh(step, g);
 
-      const t = (i / (result.graphs.length - 1)).toFixed(2);
       const label = document.createElement('div');
       label.className = 'interp-step-label';
-      label.textContent = `t=${t}`;
+      if (i === 0) label.textContent = `Source (#${idxA})`;
+      else if (i === nSteps - 1) label.textContent = `Target (#${idxB})`;
+      else label.textContent = `t=${(i / (nSteps - 1)).toFixed(2)}`;
       step.appendChild(label);
     });
 
-    log('mesh-status-log', `Interpolation: ${result.graphs.length} steps`);
+    log('mesh-status-log', `Interpolation: mesh #${idxA} → #${idxB}, ${nSteps} steps`);
   } catch (e) {
     log('mesh-status-log', `Interpolation error: ${e.message}`);
   }

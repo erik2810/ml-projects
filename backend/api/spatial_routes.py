@@ -30,6 +30,7 @@ _state = {
     'generated_diff': None,
     'mesh_vae_model': None,
     'mesh_train_data': None,
+    'mesh_procedural': None,
 }
 
 
@@ -368,6 +369,7 @@ def generate_meshes(req: MeshGenerateRequest):
         num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
         device=DEVICE,
     )
+    _state['mesh_procedural'] = graphs
     return {"graphs": [_serialize_graph(g) for g in graphs]}
 
 
@@ -390,6 +392,10 @@ def train_mesh_vae_endpoint(req: TrainMeshVAERequest):
         num_points_range=(max(12, req.num_nodes - 6), req.num_nodes + 6),
         device=DEVICE,
     )
+    # Prepend the displayed procedural meshes so the encoder learns
+    # their latent representations — these are used for interpolation.
+    if _state['mesh_procedural']:
+        graphs = list(_state['mesh_procedural']) + graphs
     _state['mesh_train_data'] = graphs
 
     max_n = max(g.num_nodes for g in graphs) + 4
@@ -439,15 +445,15 @@ class MeshInterpolateRequest(BaseModel):
 
 @router.post("/mesh/vae/interpolate")
 def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
-    """Interpolate between two training meshes in latent space."""
+    """Interpolate between two displayed procedural meshes in latent space."""
     if _state['mesh_vae_model'] is None:
         raise HTTPException(400, "No trained mesh VAE.")
-    if _state['mesh_train_data'] is None:
-        raise HTTPException(400, "No mesh training data.")
+    if _state['mesh_procedural'] is None:
+        raise HTTPException(400, "No procedural meshes. Click 'View Procedural Meshes' first.")
 
-    data = _state['mesh_train_data']
+    data = _state['mesh_procedural']
     if req.graph_idx_a >= len(data) or req.graph_idx_b >= len(data):
-        raise HTTPException(400, f"Index out of range (have {len(data)} meshes).")
+        raise HTTPException(400, f"Index out of range (have {len(data)} procedural meshes).")
 
     model = _state['mesh_vae_model']
     g1 = data[req.graph_idx_a].to(DEVICE)

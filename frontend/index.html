@@ -484,13 +484,14 @@
           <hr class="divider">
 
           <h3 class="card-title" style="margin-top:4px">Latent Interpolation</h3>
+          <p class="field-hint">Indices reference the procedural meshes shown above.</p>
           <div class="field">
-            <label for="mesh-interp-a">Mesh index A</label>
-            <input id="mesh-interp-a" type="number" value="0" min="0">
+            <label for="mesh-interp-a">Source mesh #</label>
+            <input id="mesh-interp-a" type="number" value="0" min="0" max="3">
           </div>
           <div class="field">
-            <label for="mesh-interp-b">Mesh index B</label>
-            <input id="mesh-interp-b" type="number" value="1" min="0">
+            <label for="mesh-interp-b">Target mesh #</label>
+            <input id="mesh-interp-b" type="number" value="1" min="0" max="3">
           </div>
           <div class="field">
             <label for="mesh-interp-steps">Steps</label>
