@@ -352,44 +352,37 @@ def generate_mesh_dataset(
     num_points_range: tuple[int, int] = (16, 32),
     device: torch.device | None = None,
 ) -> list[SpatialGraph]:
-    """Generate a dataset of synthetic meshes for training.
+    """Generate a diverse dataset of synthetic meshes for training.
+
+    Cycles through all six shape generators (cube, octahedron,
+    icosahedron, hexagonal prism, 3D star, torus) with randomised
+    scale and noise so the VAE learns to reconstruct every shape type.
 
     Args:
         num: number of meshes to generate
-        mesh_type: 'rock', 'icosahedron', or 'mixed'
-        num_points_range: (min, max) node count for rocks
+        mesh_type: ignored (kept for API compatibility)
+        num_points_range: ignored (kept for API compatibility)
         device: torch device
     """
+
+    def _rscale():
+        return 0.8 + torch.rand(1).item() * 0.4
+
+    generators = [
+        lambda: cube(scale=_rscale(), noise=0.06 + torch.rand(1).item() * 0.10, device=device),
+        lambda: octahedron(scale=_rscale(), noise=0.05 + torch.rand(1).item() * 0.08, device=device),
+        lambda: deformed_icosahedron(scale=_rscale(), noise=0.10 + torch.rand(1).item() * 0.15, device=device),
+        lambda: hexagonal_prism(scale=_rscale(), noise=0.05 + torch.rand(1).item() * 0.08, device=device),
+        lambda: star_3d(scale=_rscale(), noise=0.03 + torch.rand(1).item() * 0.06, device=device),
+        lambda: low_poly_torus(
+            minor_r=0.25 + torch.rand(1).item() * 0.20,
+            noise=0.03 + torch.rand(1).item() * 0.05,
+            device=device,
+        ),
+    ]
+
     graphs = []
     for i in range(num):
-        if mesh_type == 'icosahedron':
-            g = deformed_icosahedron(
-                scale=0.8 + torch.rand(1).item() * 0.4,
-                noise=0.1 + torch.rand(1).item() * 0.2,
-                device=device,
-            )
-        elif mesh_type == 'rock':
-            n = torch.randint(num_points_range[0], num_points_range[1] + 1, (1,)).item()
-            g = low_poly_rock(
-                num_points=n,
-                radius=0.8 + torch.rand(1).item() * 0.4,
-                noise=0.2 + torch.rand(1).item() * 0.2,
-                device=device,
-            )
-        else:  # mixed
-            if i % 2 == 0:
-                g = deformed_icosahedron(
-                    scale=0.8 + torch.rand(1).item() * 0.4,
-                    noise=0.1 + torch.rand(1).item() * 0.2,
-                    device=device,
-                )
-            else:
-                n = torch.randint(num_points_range[0], num_points_range[1] + 1, (1,)).item()
-                g = low_poly_rock(
-                    num_points=n,
-                    radius=0.8 + torch.rand(1).item() * 0.4,
-                    noise=0.2 + torch.rand(1).item() * 0.2,
-                    device=device,
-                )
-        graphs.append(g)
+        gen = generators[i % len(generators)]
+        graphs.append(gen())
     return graphs

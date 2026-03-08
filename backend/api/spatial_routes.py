@@ -390,16 +390,19 @@ class TrainMeshVAERequest(BaseModel):
 @router.post("/mesh/vae/train")
 def train_mesh_vae_endpoint(req: TrainMeshVAERequest):
     """Train the mesh VAE on synthetic low-poly meshes."""
-    graphs = generate_mesh_dataset(
-        num=req.num_train,
-        mesh_type='mixed',
-        num_points_range=(12, 30),
-        device=DEVICE,
-    )
-    # Prepend the displayed procedural meshes so the encoder learns
-    # their latent representations — these are used for interpolation.
-    if _state['mesh_procedural']:
-        graphs = list(_state['mesh_procedural']) + graphs
+    # Auto-load showcase meshes if not already present
+    if _state['mesh_procedural'] is None:
+        pairs = showcase_meshes(device=DEVICE)
+        _state['mesh_procedural'] = [g for _, g in pairs]
+        _state['mesh_procedural_names'] = [name for name, _ in pairs]
+
+    graphs = generate_mesh_dataset(num=req.num_train, device=DEVICE)
+
+    # Prepend the showcase meshes (repeated) so the encoder learns
+    # their latent representations well — these are used for interpolation.
+    showcase = list(_state['mesh_procedural'])
+    showcase_repeated = showcase * max(1, req.num_train // (len(showcase) * 3))
+    graphs = showcase_repeated + graphs
     _state['mesh_train_data'] = graphs
 
     max_n = max(g.num_nodes for g in graphs) + 4
@@ -468,6 +471,12 @@ def mesh_interpolate_endpoint(req: MeshInterpolateRequest):
     g2 = data[req.graph_idx_b].to(DEVICE)
 
     interps = model.interpolate(g1, g2, steps=req.steps)
+
+    # Replace the decoded endpoints with the actual source/target
+    # meshes so the strip always starts and ends with the real shapes.
+    interps[0] = g1
+    interps[-1] = g2
+
     return {
         "graphs": [_serialize_graph(g) for g in interps],
         "source": _serialize_graph(g1),

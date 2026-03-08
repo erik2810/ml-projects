@@ -494,25 +494,23 @@ f 1 3 4
         assert g.num_edges > 0
         assert (g.parent == -1).all()
 
-    def test_generate_mesh_dataset_mixed(self):
-        graphs = generate_mesh_dataset(num=6, mesh_type='mixed')
-        assert len(graphs) == 6
+    def test_generate_mesh_dataset_diverse(self):
+        graphs = generate_mesh_dataset(num=12)
+        assert len(graphs) == 12
+        # Dataset now cycles through all 6 shape types
+        node_counts = {g.num_nodes for g in graphs}
+        # Should contain at least 3 distinct node counts (cube=8, oct=6, ico=12, etc.)
+        assert len(node_counts) >= 3
         for g in graphs:
             assert isinstance(g, SpatialGraph)
             assert g.num_nodes > 0
             assert (g.parent == -1).all()
 
-    def test_generate_mesh_dataset_rock(self):
-        graphs = generate_mesh_dataset(num=3, mesh_type='rock', num_points_range=(12, 20))
+    def test_generate_mesh_dataset_small(self):
+        graphs = generate_mesh_dataset(num=3)
         assert len(graphs) == 3
         for g in graphs:
-            assert 12 <= g.num_nodes <= 20
-
-    def test_generate_mesh_dataset_icosahedron(self):
-        graphs = generate_mesh_dataset(num=3, mesh_type='icosahedron')
-        assert len(graphs) == 3
-        for g in graphs:
-            assert g.num_nodes == 12  # always 12 vertices
+            assert g.num_nodes > 0
 
 
 class TestSpatialMeshVAE:

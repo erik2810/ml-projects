@@ -687,26 +687,43 @@ function renderSpatialMesh(container, graphData) {
 // Mesh Interpolation Panel
 // ---------------------------------------------------------------------------
 
+// Helper: load showcase meshes into grid and update dropdowns
+async function loadShowcaseMeshes() {
+  const result = await api.generateMeshes({ mesh_type: 'showcase', num_meshes: 6 });
+  renderSpatialGrid('mesh-3d-grid', result.graphs);
+  document.getElementById('mesh-output-title').textContent = 'Showcase Shapes';
+
+  // Hide interpolation section until interpolation is run
+  const interpSection = document.getElementById('mesh-interp-section');
+  if (interpSection) interpSection.hidden = true;
+
+  // Populate source/target dropdowns with shape names
+  const selA = document.getElementById('mesh-interp-a');
+  const selB = document.getElementById('mesh-interp-b');
+  const prevA = selA.value;
+  const prevB = selB.value;
+  selA.innerHTML = '';
+  selB.innerHTML = '';
+  result.graphs.forEach((g, i) => {
+    const name = g.name || `Mesh ${i}`;
+    selA.innerHTML += `<option value="${i}">${name}</option>`;
+    selB.innerHTML += `<option value="${i}">${name}</option>`;
+  });
+  // Restore previous selection or use defaults
+  selA.value = prevA < result.graphs.length ? prevA : '0';
+  selB.value = prevB < result.graphs.length ? prevB : String(Math.min(3, result.graphs.length - 1));
+
+  return result;
+}
+
+let meshShowcaseLoaded = false;
+
 document.getElementById('btn-view-meshes')?.addEventListener('click', async function () {
   setLoading(this, true);
   try {
-    const result = await api.generateMeshes({ mesh_type: 'showcase', num_meshes: 6 });
-    renderSpatialGrid('mesh-3d-grid', result.graphs);
-    document.getElementById('mesh-interp-strip').innerHTML = '';
-
-    // Populate source/target dropdowns with shape names
-    const selA = document.getElementById('mesh-interp-a');
-    const selB = document.getElementById('mesh-interp-b');
-    selA.innerHTML = '';
-    selB.innerHTML = '';
-    result.graphs.forEach((g, i) => {
-      const name = g.name || `Mesh ${i}`;
-      selA.innerHTML += `<option value="${i}">${i} — ${name}</option>`;
-      selB.innerHTML += `<option value="${i}">${i} — ${name}</option>`;
-    });
-    selB.value = Math.min(1, result.graphs.length - 1);
-
-    log('mesh-status-log', `Showing ${result.graphs.length} procedural meshes`);
+    await loadShowcaseMeshes();
+    meshShowcaseLoaded = true;
+    log('mesh-status-log', 'Loaded 6 showcase shapes');
   } catch (e) {
     log('mesh-status-log', `Error: ${e.message}`);
   }
@@ -717,9 +734,16 @@ document.getElementById('btn-train-mesh-vae')?.addEventListener('click', async f
   setLoading(this, true);
   const statusLog = document.getElementById('mesh-status-log');
   statusLog.textContent = '';
-  log('mesh-status-log', 'Training mesh VAE...');
 
   try {
+    // Auto-load showcase meshes if not done yet
+    if (!meshShowcaseLoaded) {
+      log('mesh-status-log', 'Loading showcase shapes...');
+      await loadShowcaseMeshes();
+      meshShowcaseLoaded = true;
+    }
+
+    log('mesh-status-log', 'Training mesh VAE...');
     const params = {
       num_train: +document.getElementById('mesh-num-train').value,
       hidden_dim: +document.getElementById('mesh-hidden-dim').value,
@@ -746,7 +770,9 @@ document.getElementById('btn-gen-mesh-vae')?.addEventListener('click', async fun
     const n = +document.getElementById('mesh-gen-samples').value;
     const result = await api.generateMeshVAE({ num_samples: n });
     renderSpatialGrid('mesh-3d-grid', result.graphs);
-    document.getElementById('mesh-interp-strip').innerHTML = '';
+    document.getElementById('mesh-output-title').textContent = 'Generated Meshes (VAE Prior)';
+    const interpSection = document.getElementById('mesh-interp-section');
+    if (interpSection) interpSection.hidden = true;
     log('mesh-status-log', `Generated ${result.graphs.length} meshes from VAE`);
   } catch (e) {
     log('mesh-status-log', `Generate error: ${e.message}`);
@@ -768,10 +794,20 @@ document.getElementById('btn-interp-mesh')?.addEventListener('click', async func
     const nameA = result.source_name || `#${idxA}`;
     const nameB = result.target_name || `#${idxB}`;
 
-    // show source + target in grid (the exact procedural meshes)
-    renderSpatialGrid('mesh-3d-grid', [result.source, result.target]);
+    // Show source + target in the main grid
+    const srcData = result.source;
+    srcData.name = nameA;
+    const tgtData = result.target;
+    tgtData.name = nameB;
+    renderSpatialGrid('mesh-3d-grid', [srcData, tgtData]);
+    document.getElementById('mesh-output-title').textContent = `Source & Target`;
 
-    // render interpolation strip
+    // Show interpolation strip
+    const interpSection = document.getElementById('mesh-interp-section');
+    if (interpSection) interpSection.hidden = false;
+    document.getElementById('mesh-interp-title').textContent =
+      `Interpolation: ${nameA} → ${nameB}`;
+
     const strip = document.getElementById('mesh-interp-strip');
     strip.innerHTML = '';
 
