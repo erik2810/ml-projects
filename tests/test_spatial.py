@@ -9,6 +9,7 @@ import pytest
 import math
 
 from backend.core.spatial.graph3d import SpatialGraph, parse_swc, to_swc
+from backend.core.graph_utils import spectral_layout_2d, adj_to_spatial_graph_2d
 from backend.core.spatial.synthetic import random_branching_tree, random_neuron_morphology
 from backend.core.spatial.metrics import (
     sholl_analysis,
@@ -609,3 +610,79 @@ class TestSpatialMeshVAE:
         model = SpatialMeshVAE(latent_dim=8, hidden_dim=16, max_nodes=16)
         z = model.encode(g)
         assert z.shape == (8,)
+
+
+class TestSpectralLayout:
+    """Tests for spectral graph layout and 2D→SpatialGraph bridge."""
+
+    def test_spectral_layout_2d_ring(self):
+        """Ring graph should produce roughly circular layout."""
+        from backend.core.graph_utils import watts_strogatz
+        adj = watts_strogatz(8, k=2, p=0.0)  # perfect ring
+        pos = spectral_layout_2d(adj)
+        assert pos.shape == (8, 2)
+        # All positions should be in [-1, 1]
+        assert pos.min() >= -1.01
+        assert pos.max() <= 1.01
+
+    def test_spectral_layout_2d_star(self):
+        """Star graph should produce hub at center."""
+        n = 7
+        adj = torch.zeros(n, n)
+        for i in range(1, n):
+            adj[0, i] = 1.0
+            adj[i, 0] = 1.0
+        pos = spectral_layout_2d(adj)
+        assert pos.shape == (n, 2)
+
+    def test_spectral_layout_2d_small(self):
+        """Small graph (2 nodes) should not crash."""
+        adj = torch.tensor([[0., 1.], [1., 0.]])
+        pos = spectral_layout_2d(adj)
+        assert pos.shape == (2, 2)
+
+    def test_spectral_layout_2d_disconnected(self):
+        """Disconnected graph should not crash; isolated nodes get positions."""
+        adj = torch.zeros(6, 6)
+        adj[0, 1] = adj[1, 0] = 1.0
+        adj[2, 3] = adj[3, 2] = 1.0
+        # Nodes 4, 5 are isolated
+        pos = spectral_layout_2d(adj)
+        assert pos.shape == (6, 2)
+        assert torch.isfinite(pos).all()
+
+    def test_adj_to_spatial_graph_2d_shape(self):
+        """adj_to_spatial_graph_2d should return SpatialGraph with 3D pos."""
+        from backend.core.graph_utils import erdos_renyi
+        adj = erdos_renyi(10, 0.3)
+        sg = adj_to_spatial_graph_2d(adj)
+        assert isinstance(sg, SpatialGraph)
+        assert sg.pos.shape[1] == 3
+        # z coordinates should all be 0
+        assert (sg.pos[:, 2] == 0).all()
+        # parent should be -1 for all nodes
+        assert (sg.parent == -1).all()
+
+    def test_adj_to_spatial_graph_2d_preserves_edges(self):
+        """Edge count should be preserved through conversion."""
+        from backend.core.graph_utils import barabasi_albert
+        adj = barabasi_albert(8, m=2)
+        sg = adj_to_spatial_graph_2d(adj)
+        # Count edges in original (upper triangle)
+        orig_edges = int(torch.triu(adj[:sg.pos.size(0), :sg.pos.size(0)], diagonal=1).sum().item())
+        sg_edges = int(torch.triu(sg.adj, diagonal=1).sum().item())
+        assert orig_edges == sg_edges
+
+    def test_geometric_interpolate_2d_pipeline(self):
+        """Full pipeline: 2 adjacency matrices → spectral layout → geometric interpolate."""
+        from backend.core.graph_utils import watts_strogatz, barabasi_albert
+        adj_a = watts_strogatz(8, k=4, p=0.1)
+        adj_b = barabasi_albert(8, m=2)
+        sg_a = adj_to_spatial_graph_2d(adj_a)
+        sg_b = adj_to_spatial_graph_2d(adj_b)
+        interps = geometric_interpolate(sg_a, sg_b, steps=5)
+        assert len(interps) >= 3  # at least source, middle, target
+        for sg in interps:
+            assert isinstance(sg, SpatialGraph)
+            assert sg.pos.shape[1] == 3
+            assert torch.isfinite(sg.pos).all()

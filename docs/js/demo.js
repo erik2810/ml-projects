@@ -471,25 +471,117 @@
   document.getElementById('btn-gen-new')?.addEventListener('click', generateGraphsFromSliders);
   document.getElementById('ctrl-type')?.addEventListener('change', generateGraphsFromSliders);
 
-  // ── VAE: interpolation ──────────────────────────────────────────────────
-  const interpSteps = EXAMPLES.interpolation.steps;
+  // ── VAE: geometric graph interpolation strips ─────────────────────────
 
-  function renderInterpolation(stepIndex) {
-    const el = document.getElementById('interp-viz');
-    if (!el || !interpSteps[stepIndex]) return;
-    el.innerHTML = '';
+  function renderGraphWireframe(container, graphData) {
+    const w = container.clientWidth || 100;
+    const h = container.clientHeight || 100;
+    const pad = 12;
+    const positions = graphData.positions;
+    const edges = graphData.edges;
 
-    const step = interpSteps[stepIndex];
-    document.getElementById('interp-alpha').textContent = step.alpha.toFixed(1);
+    if (!positions || positions.length === 0) return;
 
-    renderSmallGraph(el, step.nodes.length, step.edges);
+    // Compute bounding box
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of positions) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const scale = Math.min((w - 2 * pad) / rangeX, (h - 2 * pad) / rangeY);
+    const cx = w / 2, cy = h / 2;
+    const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+
+    const screenPos = positions.map(([x, y]) => [
+      cx + (x - midX) * scale,
+      cy + (y - midY) * scale,
+    ]);
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+
+    // Draw edges
+    for (const [i, j] of edges) {
+      if (i < screenPos.length && j < screenPos.length) {
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', screenPos[i][0]);
+        line.setAttribute('y1', screenPos[i][1]);
+        line.setAttribute('x2', screenPos[j][0]);
+        line.setAttribute('y2', screenPos[j][1]);
+        line.setAttribute('stroke', '#6366f1');
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke-opacity', '0.45');
+        svg.appendChild(line);
+      }
+    }
+
+    // Draw nodes
+    for (const [x, y] of screenPos) {
+      const circle = document.createElementNS(ns, 'circle');
+      circle.setAttribute('cx', x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', '3');
+      circle.setAttribute('fill', '#6366f1');
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '0.8');
+      svg.appendChild(circle);
+    }
+
+    container.innerHTML = '';
+    container.appendChild(svg);
   }
 
-  renderInterpolation(0);
+  function renderGraphInterpolationStrips() {
+    const container = document.getElementById('graph-interp-strips');
+    if (!container || !EXAMPLES.graphInterpolation) return;
+    container.innerHTML = '';
 
-  document.getElementById('interp-slider')?.addEventListener('input', function () {
-    renderInterpolation(+this.value);
-  });
+    for (const pair of EXAMPLES.graphInterpolation) {
+      const pairDiv = document.createElement('div');
+      pairDiv.className = 'graph-interp-pair';
+
+      const title = document.createElement('h4');
+      title.textContent = `${pair.source} → ${pair.target}`;
+      pairDiv.appendChild(title);
+
+      const strip = document.createElement('div');
+      strip.className = 'graph-interp-strip';
+
+      for (let i = 0; i < pair.steps.length; i++) {
+        const step = pair.steps[i];
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'graph-interp-step';
+        if (i === 0 || i === pair.steps.length - 1) {
+          stepDiv.classList.add('is-endpoint');
+        }
+
+        const vizDiv = document.createElement('div');
+        vizDiv.className = 'graph-interp-step-viz';
+        stepDiv.appendChild(vizDiv);
+
+        const label = document.createElement('span');
+        label.className = 'graph-interp-step-label';
+        label.textContent = step.label;
+        stepDiv.appendChild(label);
+
+        strip.appendChild(stepDiv);
+        renderGraphWireframe(vizDiv, step);
+      }
+
+      pairDiv.appendChild(strip);
+      container.appendChild(pairDiv);
+    }
+  }
+
+  renderGraphInterpolationStrips();
 
   drawChart('vae-chart', EXAMPLES.trainingCurves.vae, 'totalLoss', { color: '#c084fc', yLabel: 'ELBO loss' });
 

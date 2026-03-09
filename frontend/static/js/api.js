@@ -28,6 +28,7 @@ export const api = {
   trainVAE: (params) => request('/vae/train', { method: 'POST', body: params }),
   generateVAE: (n) => request(`/vae/generate?num_samples=${n}`, { method: 'POST' }),
   interpolateVAE: (params) => request('/vae/interpolate', { method: 'POST', body: params }),
+  interpolateVAEGeometric: (params) => request('/vae/interpolate/geometric', { method: 'POST', body: params }),
 
   // Diffusion
   trainDiffusion: (params) => request('/vae/diffusion/train', { method: 'POST', body: params }),

@@ -8,7 +8,9 @@ from backend.core.graphvae.model import (
 )
 from backend.core.graph_utils import (
     graph_density, clustering_coefficient, adj_to_edge_index, one_hot_degree_features,
+    adj_to_spatial_graph_2d,
 )
+from backend.core.spatial.mesh_utils import geometric_interpolate
 from backend.config import DEVICE, CHECKPOINT_DIR, VAE_DEFAULTS, DIFFUSION_DEFAULTS
 
 router = APIRouter(prefix="/vae", tags=["vae"])
@@ -129,6 +131,59 @@ def interpolate(req: InterpolateRequest):
         "steps": [_graph_to_dict(adj) for adj, _ in interps],
         "source": _graph_to_dict(adj_a),
         "target": _graph_to_dict(adj_b),
+    }
+
+
+def _spatial_graph_to_dict(sg):
+    """Serialize a SpatialGraph to a dict with 2D positions and edges."""
+    n = sg.pos.size(0)
+    adj_t = sg.adj[:n, :n]
+    ei = adj_to_edge_index(adj_t)
+    # Deduplicate to undirected edges (only keep i < j)
+    edges = []
+    for k in range(ei.size(1)):
+        i, j = int(ei[0, k]), int(ei[1, k])
+        if i < j:
+            edges.append([i, j])
+    return {
+        "num_nodes": n,
+        "num_edges": len(edges),
+        "edges": edges,
+        "positions": sg.pos[:, :2].tolist(),  # 2D positions
+        "density": round(graph_density(adj_t), 4),
+        "avg_clustering": round(float(clustering_coefficient(adj_t).mean().item()), 4),
+    }
+
+
+@router.post("/interpolate/geometric")
+def interpolate_geometric(req: InterpolateRequest):
+    """Geometric interpolation between two training graphs.
+
+    Uses spectral layout to compute deterministic 2D positions for each graph,
+    then applies greedy node matching + position/edge blending to produce
+    smooth intermediate graphs.
+    """
+    if _state["train_graphs"] is None:
+        raise HTTPException(400, "No training graphs. Call /vae/train first.")
+
+    graphs = _state["train_graphs"]
+    if req.graph_idx_a >= len(graphs) or req.graph_idx_b >= len(graphs):
+        raise HTTPException(400, f"Graph index out of range (have {len(graphs)} graphs).")
+
+    _, adj_a = graphs[req.graph_idx_a]
+    _, adj_b = graphs[req.graph_idx_b]
+
+    # Convert adjacency matrices to SpatialGraph with spectral 2D layout
+    sg_a = adj_to_spatial_graph_2d(adj_a)
+    sg_b = adj_to_spatial_graph_2d(adj_b)
+
+    # Run geometric interpolation
+    interp_steps = geometric_interpolate(sg_a, sg_b, steps=req.steps)
+
+    return {
+        "steps": [_spatial_graph_to_dict(sg) for sg in interp_steps],
+        "source": _spatial_graph_to_dict(sg_a),
+        "target": _spatial_graph_to_dict(sg_b),
     }
 
 

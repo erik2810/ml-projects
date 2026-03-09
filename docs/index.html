@@ -185,20 +185,15 @@
           </div>
         </div>
 
-        <!-- Interpolation panel -->
-        <div class="interpolation-panel fade-in">
-          <h3>Latent Space Interpolation</h3>
-          <div class="interpolation-slider-wrap">
-            <label>Ring graph</label>
-            <input type="range" id="interp-slider" min="0" max="5" step="1" value="0">
-            <span class="alpha-value" id="interp-alpha">0.0</span>
-            <label>Star graph</label>
-          </div>
-          <div class="interpolation-graph" id="interp-viz"></div>
-          <div class="interpolation-endpoints">
-            <span class="endpoint-label"><span class="endpoint-dot" style="background:#6366f1"></span> Source (ring)</span>
-            <span class="endpoint-label"><span class="endpoint-dot" style="background:#f59e0b"></span> Target (star)</span>
-          </div>
+        <!-- Graph Geometric Interpolation -->
+        <div class="interpolation-panel fade-in" style="grid-column: 1 / -1;">
+          <h3>Geometric Graph Interpolation</h3>
+          <p class="arch-desc">
+            Spectral layout computes deterministic 2D node positions from graph topology.
+            Greedy node matching and edge blending produce smooth morphing sequences between
+            structurally different graphs.
+          </p>
+          <div id="graph-interp-strips"></div>
         </div>
 
         <!-- Training curve -->

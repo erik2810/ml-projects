@@ -284,8 +284,8 @@
 
         <!-- Interpolation -->
         <div class="card controls-card">
-          <h3 class="card-title">Latent Interpolation</h3>
-          <p class="card-desc">Interpolate between two training graphs in VAE latent space.</p>
+          <h3 class="card-title">Geometric Interpolation</h3>
+          <p class="card-desc">Smoothly morph between training graphs using spectral layout and geometric blending.</p>
           <div class="field">
             <label for="interp-idx-a">Graph index A</label>
             <input id="interp-idx-a" type="number" value="0" min="0">
@@ -306,6 +306,7 @@
         <!-- Visualization area -->
         <div class="card viz-card viz-card--full">
           <h3 class="card-title">Outputs</h3>
+          <div id="vae-interp-strip" class="interpolation-strip" hidden aria-label="Geometric interpolation sequence"></div>
           <div id="vae-graph-grid" class="graph-grid" aria-label="VAE / Diffusion output gallery"></div>
         </div>
       </div>

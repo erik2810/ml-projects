@@ -1171,6 +1171,59 @@ footer {
   font-weight: 700;
 }
 
+/* --- Graph Geometric Interpolation Strips --- */
+.graph-interp-pair {
+  margin-bottom: 1.5rem;
+}
+
+.graph-interp-pair h4 {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-text-mute);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.graph-interp-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.35rem;
+  padding: 0.5rem 0;
+}
+
+.graph-interp-step {
+  text-align: center;
+  min-width: 0;
+}
+
+.graph-interp-step-viz {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--color-code-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  position: relative;
+}
+
+.graph-interp-step-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-mute);
+  margin-top: 0.15rem;
+  font-weight: 600;
+}
+
+.graph-interp-step.is-endpoint .graph-interp-step-viz {
+  border-color: var(--color-accent-lt);
+  border-width: 1.5px;
+}
+
+.graph-interp-step.is-endpoint .graph-interp-step-label {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
 /* Architecture description */
 .arch-desc {
   font-size: 0.9rem;

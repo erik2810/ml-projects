@@ -133,3 +133,81 @@ def one_hot_degree_features(adj: Tensor, max_degree: int = 10) -> Tensor:
     """Create node features from degree via one-hot encoding."""
     deg = adj.sum(dim=1).long().clamp(max=max_degree)
     return torch.nn.functional.one_hot(deg, num_classes=max_degree + 1).float()
+
+
+# ---------------------------------------------------------------------------
+# Spectral graph layout for 2D positioning
+# ---------------------------------------------------------------------------
+
+def spectral_layout_2d(adj: Tensor) -> Tensor:
+    """Compute 2D node positions via spectral layout (Laplacian eigenvectors).
+
+    Uses the 2nd and 3rd smallest eigenvectors of the graph Laplacian
+    L = D - A (the Fiedler vector and the next one) as x, y coordinates.
+    This gives a deterministic, rotation-consistent layout for any graph.
+
+    Handles disconnected graphs by falling back to random positions for
+    isolated nodes.
+
+    Returns:
+        (N, 2) tensor of 2D positions.
+    """
+    n = adj.size(0)
+    if n <= 2:
+        return torch.randn(n, 2, device=adj.device) * 0.5
+
+    # Graph Laplacian: L = D - A
+    deg = adj.sum(dim=1)
+    laplacian = torch.diag(deg) - adj
+
+    # Eigen-decomposition (symmetric matrix)
+    eigenvalues, eigenvectors = torch.linalg.eigh(laplacian.float())
+
+    # Use 2nd and 3rd smallest eigenvectors as x, y
+    # (1st eigenvector is constant for connected graphs)
+    pos = eigenvectors[:, 1:3]  # (N, 2)
+
+    # Handle degenerate case: if eigenvalues are zero (disconnected),
+    # the eigenvectors may be degenerate. Add small random perturbation
+    # to isolated nodes.
+    isolated = (deg == 0)
+    if isolated.any():
+        pos[isolated] = torch.randn(int(isolated.sum()), 2, device=adj.device) * 0.1
+
+    # Normalize to [-1, 1] range
+    pos_min = pos.min(dim=0).values
+    pos_max = pos.max(dim=0).values
+    span = pos_max - pos_min
+    span[span == 0] = 1.0
+    pos = 2.0 * (pos - pos_min) / span - 1.0
+
+    return pos
+
+
+def adj_to_spatial_graph_2d(adj: Tensor):
+    """Convert a 2D adjacency matrix to a SpatialGraph with spectral layout.
+
+    Computes 2D positions via spectral layout and embeds them in 3D with z=0,
+    allowing reuse of `geometric_interpolate()` from mesh_utils.
+
+    Returns:
+        SpatialGraph with pos (N, 3), adj (N, N), parent all -1.
+    """
+    from backend.core.spatial.graph3d import SpatialGraph
+
+    n = adj.size(0)
+    # Only keep active nodes (non-isolated rows)
+    deg = adj.sum(dim=1)
+    active = max(int((deg > 0).sum().item()), 2)
+    adj_active = adj[:active, :active]
+
+    pos_2d = spectral_layout_2d(adj_active)
+    # Pad to 3D with z=0
+    pos_3d = torch.zeros(active, 3, device=adj.device)
+    pos_3d[:, :2] = pos_2d
+
+    return SpatialGraph(
+        pos=pos_3d,
+        adj=adj_active,
+        parent=torch.full((active,), -1, dtype=torch.long, device=adj.device),
+    )

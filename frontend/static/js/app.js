@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { renderGraph, renderMiniGraph, drawLossCurve } from './graph_viz.js';
+import { renderGraph, renderMiniGraph, renderFixedGraph, drawLossCurve } from './graph_viz.js';
 
 // ---------------------------------------------------------------------------
 // Tab switching
@@ -267,9 +267,35 @@ document.getElementById('btn-interpolate')?.addEventListener('click', async func
       graph_idx_b: +document.getElementById('interp-idx-b').value,
       steps: +document.getElementById('interp-steps').value,
     };
-    const result = await api.interpolateVAE(params);
-    // steps already include source (alpha=0) and target (alpha=1)
-    renderGraphGrid('vae-graph-grid', result.steps);
+    const result = await api.interpolateVAEGeometric(params);
+    // Render as interpolation strip with fixed positions
+    const strip = document.getElementById('vae-interp-strip');
+    if (strip) {
+      strip.innerHTML = '';
+      strip.hidden = false;
+      result.steps.forEach((step, i) => {
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'interp-step';
+        if (i === 0 || i === result.steps.length - 1) {
+          stepDiv.classList.add('is-endpoint');
+        }
+        const graphDiv = document.createElement('div');
+        graphDiv.className = 'interp-step-graph';
+        graphDiv.style.width = '140px';
+        graphDiv.style.height = '140px';
+        stepDiv.appendChild(graphDiv);
+        const label = document.createElement('span');
+        label.className = 'interp-step-label';
+        const t = i / Math.max(result.steps.length - 1, 1);
+        label.textContent = i === 0 ? 'Source' : i === result.steps.length - 1 ? 'Target' : `t=${t.toFixed(2)}`;
+        stepDiv.appendChild(label);
+        strip.appendChild(stepDiv);
+        renderFixedGraph(graphDiv, { positions: step.positions, edges: step.edges });
+      });
+    } else {
+      // Fallback: render in grid
+      renderGraphGrid('vae-graph-grid', result.steps);
+    }
   } catch (e) {
     log('vae-status-log', `Interpolate error: ${e.message}`);
   }
