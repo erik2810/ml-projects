@@ -38,6 +38,9 @@
         <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-spatial" data-tab="spatial">
           Spatial 3D
         </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-wl" data-tab="wl">
+          WL Test
+        </button>
       </nav>
     </div>
   </header>
@@ -524,6 +527,53 @@
             <h3 class="card-title" id="mesh-interp-title">Interpolation</h3>
             <div id="mesh-interp-strip" class="interpolation-strip" aria-label="Interpolation sequence"></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== WL Test Panel ======== -->
+    <section id="panel-wl" class="panel" role="tabpanel" aria-labelledby="tab-wl" hidden>
+      <div class="panel-header">
+        <h2>1-WL Color Refinement</h2>
+        <p class="panel-desc">Visualize the Weisfeiler-Leman graph isomorphism test. 1-WL iteratively refines node colors by aggregating neighbor multisets &mdash; provably equivalent in power to message-passing GNNs (Xu et al., 2019; Morris et al., 2019).</p>
+      </div>
+
+      <div class="panel-grid wl-layout">
+        <!-- Controls -->
+        <div class="card controls-card">
+          <h3 class="card-title">Configuration</h3>
+          <div class="field">
+            <label for="wl-pair">Graph pair</label>
+            <select id="wl-pair">
+              <option value="0">Star K&#x2081;,&#x2085; vs Path P&#x2086;</option>
+              <option value="1">C&#x2086; vs C&#x2083;&#x222A;C&#x2083;</option>
+              <option value="2">C&#x2088; vs C&#x2084;&#x222A;C&#x2084;</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="wl-iterations">Iterations</label>
+            <input id="wl-iterations" type="number" value="3" min="1" max="10">
+          </div>
+          <div class="control-group">
+            <button id="btn-run-wl" class="btn btn-primary" type="button">Run WL Test</button>
+          </div>
+          <output id="wl-status-log" class="status-log" aria-live="polite"></output>
+
+          <div class="wl-method-panel">
+            <h4>Algorithm</h4>
+            <div class="wl-method-steps">
+              <div class="wl-method-step"><span class="wl-step-num">1</span><div><strong>Initialize</strong><p>Color each node by its degree</p></div></div>
+              <div class="wl-method-step"><span class="wl-step-num">2</span><div><strong>Refine</strong><p>Hash (color, sorted neighbor colors) and relabel</p></div></div>
+              <div class="wl-method-step"><span class="wl-step-num">3</span><div><strong>Compare</strong><p>If color histograms differ &rarr; graphs are non-isomorphic</p></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card viz-card viz-card--full">
+          <h3 class="card-title" id="wl-result-title">Results</h3>
+          <div id="wl-verdict" class="wl-verdict" hidden></div>
+          <div id="wl-iteration-strip" class="wl-iteration-strip" aria-label="WL iteration results"></div>
         </div>
       </div>
     </section>

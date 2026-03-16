@@ -21,6 +21,7 @@
         <li><a href="#vae">VAE</a></li>
         <li><a href="#spatial">Spatial 3D</a></li>
         <li><a href="#mesh">Mesh</a></li>
+        <li><a href="#wl">WL Test</a></li>
       </ul>
     </div>
   </nav>
@@ -353,6 +354,53 @@
     </div>
   </section>
 
+  <!-- WL Test Section -->
+  <section id="wl">
+    <div class="container">
+      <span class="section-label">06 &mdash; Weisfeiler-Leman Test</span>
+      <h2>1-WL Color Refinement &amp; GNN Expressivity</h2>
+      <p class="section-desc">
+        The 1-dimensional Weisfeiler-Leman test iteratively refines node colors by aggregating
+        neighbor multisets. It is provably equivalent in discriminative power to message-passing GNNs
+        (Xu et al., 2019; Morris et al., 2019), making it a fundamental tool for understanding
+        GNN expressivity limits.
+      </p>
+
+      <div class="wl-layout">
+        <!-- Method Panel -->
+        <div class="method-panel fade-in">
+          <h3>Algorithm</h3>
+          <div class="method-steps">
+            <div class="method-step">
+              <span class="method-step-num">1</span>
+              <div>
+                <strong>Initialize</strong>
+                <p>Assign each node a color based on its degree. Nodes with the same degree get the same initial color.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">2</span>
+              <div>
+                <strong>Refine</strong>
+                <p>For each node, hash <code>(color, sorted neighbor colors)</code> and relabel to consecutive integers. Repeat for <em>k</em> iterations.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">3</span>
+              <div>
+                <strong>Compare</strong>
+                <p>If color histograms of two graphs differ at any iteration, they are provably non-isomorphic. If they always match, WL cannot distinguish them.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WL Pairs -->
+        <div class="wl-pairs-panel fade-in" id="wl-pairs-container"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer -->
   <footer>
     <div class="container">
@@ -366,6 +414,8 @@
             <li><a href="https://arxiv.org/abs/1611.07308">Kipf &amp; Welling, 2016 &mdash; VGAE</a></li>
             <li><a href="https://arxiv.org/abs/2006.04159">Luo et al., 2021 &mdash; GraphDF</a></li>
             <li><a href="https://arxiv.org/abs/1802.08773">You et al., 2018 &mdash; GraphRNN</a></li>
+            <li><a href="https://arxiv.org/abs/1810.00826">Xu et al., 2019 &mdash; GIN / WL-GNN</a></li>
+            <li><a href="https://arxiv.org/abs/1810.02244">Morris et al., 2019 &mdash; k-WL</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -385,6 +435,7 @@
             <li>Graph VAE + discrete diffusion</li>
             <li>Autoregressive spatial tree VAE</li>
             <li>Geometric mesh interpolation</li>
+            <li>1-WL graph isomorphism test</li>
           </ul>
         </div>
       </div>

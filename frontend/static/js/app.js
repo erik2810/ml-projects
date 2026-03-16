@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { renderGraph, renderMiniGraph, renderFixedGraph, drawLossCurve } from './graph_viz.js';
+import { renderGraph, renderMiniGraph, renderFixedGraph, renderWLGraph, drawLossCurve } from './graph_viz.js';
 
 // ---------------------------------------------------------------------------
 // Tab switching
@@ -856,6 +856,99 @@ document.getElementById('btn-interp-mesh')?.addEventListener('click', async func
     log('mesh-status-log', `Interpolation: ${nameA} → ${nameB}, ${nSteps} steps`);
   } catch (e) {
     log('mesh-status-log', `Interpolation error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+
+// ---------------------------------------------------------------------------
+// WL Test Panel
+// ---------------------------------------------------------------------------
+document.getElementById('btn-run-wl')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const pairIdx = +document.getElementById('wl-pair').value;
+    const iterations = +document.getElementById('wl-iterations').value;
+    const result = await api.runWLTest({ pair_index: pairIdx, iterations });
+
+    // Also fetch example data for positions/edges
+    const examples = await api.loadWLExamples();
+    const pair = examples.pairs[pairIdx];
+
+    // Verdict badge
+    const verdictEl = document.getElementById('wl-verdict');
+    verdictEl.hidden = false;
+    if (result.distinguished) {
+      verdictEl.className = 'wl-verdict wl-verdict--success';
+      verdictEl.innerHTML = `<span class="wl-verdict-icon">&#x2713;</span> Distinguished at iteration ${result.distinguishing_iteration}`;
+    } else {
+      verdictEl.className = 'wl-verdict wl-verdict--fail';
+      verdictEl.innerHTML = `<span class="wl-verdict-icon">&#x2717;</span> Indistinguishable &mdash; WL fails`;
+    }
+
+    document.getElementById('wl-result-title').textContent = result.name;
+
+    // Build iteration strip
+    const strip = document.getElementById('wl-iteration-strip');
+    strip.innerHTML = '';
+
+    for (const step of result.iterations) {
+      const stepDiv = document.createElement('div');
+      stepDiv.className = 'wl-step';
+
+      const stepLabel = document.createElement('div');
+      stepLabel.className = 'wl-step-label';
+      stepLabel.textContent = `Iteration ${step.step}`;
+      stepDiv.appendChild(stepLabel);
+
+      const graphsRow = document.createElement('div');
+      graphsRow.className = 'wl-step-graphs';
+
+      // Graph A
+      const graphAWrap = document.createElement('div');
+      graphAWrap.className = 'wl-graph-wrap';
+      const graphALabel = document.createElement('div');
+      graphALabel.className = 'wl-graph-label';
+      graphALabel.textContent = pair.graphA.name;
+      graphAWrap.appendChild(graphALabel);
+      const graphAViz = document.createElement('div');
+      graphAViz.className = 'wl-graph-viz';
+      graphAViz.style.width = '150px';
+      graphAViz.style.height = '150px';
+      graphAWrap.appendChild(graphAViz);
+      graphsRow.appendChild(graphAWrap);
+
+      // Graph B
+      const graphBWrap = document.createElement('div');
+      graphBWrap.className = 'wl-graph-wrap';
+      const graphBLabel = document.createElement('div');
+      graphBLabel.className = 'wl-graph-label';
+      graphBLabel.textContent = pair.graphB.name;
+      graphBWrap.appendChild(graphBLabel);
+      const graphBViz = document.createElement('div');
+      graphBViz.className = 'wl-graph-viz';
+      graphBViz.style.width = '150px';
+      graphBViz.style.height = '150px';
+      graphBWrap.appendChild(graphBViz);
+      graphsRow.appendChild(graphBWrap);
+
+      stepDiv.appendChild(graphsRow);
+
+      // Match indicator
+      const matchDiv = document.createElement('div');
+      matchDiv.className = step.histograms_match ? 'wl-match wl-match--same' : 'wl-match wl-match--diff';
+      matchDiv.textContent = step.histograms_match ? 'Histograms match' : 'Histograms differ';
+      stepDiv.appendChild(matchDiv);
+
+      strip.appendChild(stepDiv);
+
+      renderWLGraph(graphAViz, { positions: pair.graphA.positions, edges: pair.graphA.edges, nodeColors: step.colors_a });
+      renderWLGraph(graphBViz, { positions: pair.graphB.positions, edges: pair.graphB.edges, nodeColors: step.colors_b });
+    }
+
+    log('wl-status-log', `WL test: ${result.distinguished ? 'Distinguished' : 'Indistinguishable'}`);
+  } catch (e) {
+    log('wl-status-log', `Error: ${e.message}`);
   }
   setLoading(this, false);
 });

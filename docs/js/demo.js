@@ -821,4 +821,165 @@
     drawChart('mesh-vae-chart', EXAMPLES.trainingCurvesSpatial.meshVae, 'loss', { color: '#ec4899', yLabel: 'Mesh VAE loss' });
   }
 
+  // ── WL Test: Color refinement visualization ───────────────────────────
+  const WL_PALETTE = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+  function renderWLGraphDemo(container, graphData, nodeColors) {
+    const w = container.clientWidth || 140;
+    const h = container.clientHeight || 140;
+    const pad = 16;
+    const positions = graphData.positions;
+    const edges = graphData.edges;
+
+    if (!positions || positions.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of positions) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const scale = Math.min((w - 2 * pad) / rangeX, (h - 2 * pad) / rangeY);
+    const cx = w / 2, cy = h / 2;
+    const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+
+    const screenPos = positions.map(([x, y]) => [
+      cx + (x - midX) * scale,
+      cy + (y - midY) * scale,
+    ]);
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+
+    for (const [i, j] of edges) {
+      if (i < screenPos.length && j < screenPos.length) {
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', screenPos[i][0]);
+        line.setAttribute('y1', screenPos[i][1]);
+        line.setAttribute('x2', screenPos[j][0]);
+        line.setAttribute('y2', screenPos[j][1]);
+        line.setAttribute('stroke', '#9ca3af');
+        line.setAttribute('stroke-width', '1.2');
+        line.setAttribute('stroke-opacity', '0.5');
+        svg.appendChild(line);
+      }
+    }
+
+    for (let i = 0; i < screenPos.length; i++) {
+      const [x, y] = screenPos[i];
+      const color = nodeColors && nodeColors.length > i
+        ? WL_PALETTE[nodeColors[i] % WL_PALETTE.length]
+        : '#6366f1';
+      const circle = document.createElementNS(ns, 'circle');
+      circle.setAttribute('cx', x);
+      circle.setAttribute('cy', y);
+      circle.setAttribute('r', '5.5');
+      circle.setAttribute('fill', color);
+      circle.setAttribute('stroke', '#fff');
+      circle.setAttribute('stroke-width', '1.2');
+      svg.appendChild(circle);
+    }
+
+    container.innerHTML = '';
+    container.appendChild(svg);
+  }
+
+  function renderWLSection() {
+    const container = document.getElementById('wl-pairs-container');
+    if (!container || !EXAMPLES.wlTest) return;
+    container.innerHTML = '';
+
+    for (const pair of EXAMPLES.wlTest) {
+      const pairEl = document.createElement('div');
+      pairEl.className = 'wl-pair fade-in';
+
+      // Header with title + verdict
+      const header = document.createElement('div');
+      header.className = 'wl-pair-header';
+
+      const title = document.createElement('h3');
+      title.className = 'wl-pair-title';
+      title.textContent = pair.name;
+      header.appendChild(title);
+
+      const verdict = document.createElement('span');
+      if (pair.distinguished) {
+        verdict.className = 'wl-verdict-badge wl-verdict--success';
+        verdict.innerHTML = '&#x2713; Distinguished at iteration ' + pair.distinguishing_iteration;
+      } else {
+        verdict.className = 'wl-verdict-badge wl-verdict--fail';
+        verdict.innerHTML = '&#x2717; Indistinguishable';
+      }
+      header.appendChild(verdict);
+      pairEl.appendChild(header);
+
+      // Iteration strip
+      const strip = document.createElement('div');
+      strip.className = 'wl-iteration-strip';
+
+      for (const iter of pair.iterations) {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'wl-step';
+
+        const stepLabel = document.createElement('div');
+        stepLabel.className = 'wl-step-label';
+        stepLabel.textContent = 'Iteration ' + iter.step;
+        stepEl.appendChild(stepLabel);
+
+        const graphsRow = document.createElement('div');
+        graphsRow.className = 'wl-step-graphs';
+
+        // Graph A
+        const wrapA = document.createElement('div');
+        wrapA.className = 'wl-graph-wrap';
+        const labelA = document.createElement('div');
+        labelA.className = 'wl-graph-label';
+        labelA.textContent = pair.graphA.name;
+        wrapA.appendChild(labelA);
+        const vizA = document.createElement('div');
+        vizA.className = 'wl-graph-viz';
+        wrapA.appendChild(vizA);
+        graphsRow.appendChild(wrapA);
+
+        // Graph B
+        const wrapB = document.createElement('div');
+        wrapB.className = 'wl-graph-wrap';
+        const labelB = document.createElement('div');
+        labelB.className = 'wl-graph-label';
+        labelB.textContent = pair.graphB.name;
+        wrapB.appendChild(labelB);
+        const vizB = document.createElement('div');
+        vizB.className = 'wl-graph-viz';
+        wrapB.appendChild(vizB);
+        graphsRow.appendChild(wrapB);
+
+        stepEl.appendChild(graphsRow);
+
+        // Match badge
+        const match = document.createElement('div');
+        match.className = iter.histograms_match ? 'wl-match wl-match--same' : 'wl-match wl-match--diff';
+        match.textContent = iter.histograms_match ? 'Histograms match' : 'Histograms differ';
+        stepEl.appendChild(match);
+
+        strip.appendChild(stepEl);
+
+        renderWLGraphDemo(vizA, pair.graphA, iter.colors_a);
+        renderWLGraphDemo(vizB, pair.graphB, iter.colors_b);
+      }
+
+      pairEl.appendChild(strip);
+      container.appendChild(pairEl);
+      observer.observe(pairEl);
+    }
+  }
+
+  renderWLSection();
+
 })();

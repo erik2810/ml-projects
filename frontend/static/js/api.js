@@ -48,4 +48,8 @@ export const api = {
   trainMeshVAE: (params) => request('/spatial/mesh/vae/train', { method: 'POST', body: params }),
   generateMeshVAE: (params) => request('/spatial/mesh/vae/generate', { method: 'POST', body: params }),
   interpolateMeshVAE: (params) => request('/spatial/mesh/vae/interpolate', { method: 'POST', body: params }),
+
+  // WL Test
+  loadWLExamples: () => request('/wl/examples'),
+  runWLTest: (params) => request('/wl/test', { method: 'POST', body: params }),
 };

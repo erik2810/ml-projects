@@ -272,6 +272,72 @@ export function drawLossCurve(canvas, losses, { color = '#f59e0b', label = 'Loss
   ctx.fillText(label, pad.left + 4, pad.top + 12);
 }
 
+/**
+ * Render a graph with pre-computed 2D positions and per-node WL colors.
+ * Uses a categorical color palette to distinguish WL color classes.
+ */
+export function renderWLGraph(container, { positions, edges, nodeColors = [], label = '' } = {}) {
+  const el = typeof container === 'string' ? document.querySelector(container) : container;
+  el.innerHTML = '';
+  const size = el.clientWidth || 140;
+
+  const WL_PALETTE = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  if (!positions || positions.length === 0) return;
+
+  const pad = 18;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [x, y] of positions) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = Math.min((size - 2 * pad) / rangeX, (size - 2 * pad) / rangeY);
+  const cx = size / 2;
+  const cy = size / 2;
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
+  const screenPos = positions.map(([x, y]) => [
+    cx + (x - midX) * scale,
+    cy + (y - midY) * scale,
+  ]);
+
+  const edgeGroup = svg.append('g');
+  for (const [i, j] of edges) {
+    if (i < screenPos.length && j < screenPos.length) {
+      edgeGroup.append('line')
+        .attr('x1', screenPos[i][0]).attr('y1', screenPos[i][1])
+        .attr('x2', screenPos[j][0]).attr('y2', screenPos[j][1])
+        .attr('stroke', '#374151').attr('stroke-width', 1.2).attr('stroke-opacity', 0.4);
+    }
+  }
+
+  const nodeGroup = svg.append('g');
+  for (let i = 0; i < screenPos.length; i++) {
+    const [x, y] = screenPos[i];
+    const color = nodeColors.length > i ? WL_PALETTE[nodeColors[i] % WL_PALETTE.length] : '#6366f1';
+    nodeGroup.append('circle')
+      .attr('cx', x).attr('cy', y)
+      .attr('r', 5).attr('fill', color).attr('stroke', '#1a1a2e').attr('stroke-width', 1.2);
+  }
+
+  if (label) {
+    svg.append('text')
+      .attr('x', size / 2).attr('y', size - 4)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '9px').attr('fill', '#8b92a5')
+      .text(label);
+  }
+}
+
 function nodeColor(d) {
   if (d.predicted >= 0) {
     return d.predicted === 0 ? COLORS.community0 : COLORS.community1;
