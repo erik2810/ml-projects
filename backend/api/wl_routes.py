@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from backend.core.wl import wl_test, build_example_pairs
+from backend.core.wl import wl_color_refinement, wl_test, build_example_pairs
 from backend.core.graph_utils import spectral_layout_2d, adj_to_edge_index
 
 router = APIRouter(prefix="/wl", tags=["wl"])
@@ -99,19 +99,24 @@ def get_examples():
     layout_configs = [
         # Pair 0: Star K1,5 vs Path P6
         {"a_layout": "star", "b_layout": "linear", "a_comp": None, "b_comp": None},
-        # Pair 1: C6 vs C3+C3
+        # Pair 1: C6+short chord vs C6+long chord
+        {"a_layout": "circular", "b_layout": "circular", "a_comp": None, "b_comp": None},
+        # Pair 2: C6 vs C3+C3
         {"a_layout": "circular", "b_layout": "disconnected", "a_comp": None, "b_comp": [3, 3]},
-        # Pair 2: C8 vs C4+C4
-        {"a_layout": "circular", "b_layout": "disconnected", "a_comp": None, "b_comp": [4, 4]},
     ]
 
+    iters = 4
     results = []
     for i, pair in enumerate(pairs):
         cfg = layout_configs[i]
         adj_a = pair["graphA"]["adj"]
         adj_b = pair["graphB"]["adj"]
 
-        wl_result = wl_test(adj_a, adj_b, iterations=3)
+        # Per-graph independent WL for visualization
+        history_a = wl_color_refinement(adj_a, iterations=iters)
+        history_b = wl_color_refinement(adj_b, iterations=iters)
+        # Disjoint-union WL for comparison
+        wl_result = wl_test(adj_a, adj_b, iterations=iters)
 
         graph_a = _graph_to_response(
             adj_a, pair["graphA"]["name"],
@@ -123,18 +128,22 @@ def get_examples():
         )
 
         iterations = []
-        for step in wl_result["iterations"]:
+        for step_idx in range(len(history_a)):
+            union_step = wl_result["iterations"][step_idx]
             iterations.append({
-                "step": step["step"],
-                "colors_a": step["colors_a"],
-                "colors_b": step["colors_b"],
-                "histogram_a": step["histogram_a"],
-                "histogram_b": step["histogram_b"],
-                "histograms_match": step["histograms_match"],
+                "step": step_idx,
+                "colors_a": history_a[step_idx],
+                "colors_b": history_b[step_idx],
+                "histogram_a": union_step["histogram_a"],
+                "histogram_b": union_step["histogram_b"],
+                "histograms_match": union_step["histograms_match"],
+                "num_colors_a": len(set(history_a[step_idx])),
+                "num_colors_b": len(set(history_b[step_idx])),
             })
 
         results.append({
             "name": pair["name"],
+            "description": pair.get("description", ""),
             "graphA": graph_a,
             "graphB": graph_b,
             "distinguished": wl_result["distinguished"],

@@ -107,9 +107,11 @@ def wl_test(
 def build_example_pairs() -> list[dict]:
     """Construct three example graph pairs for WL demonstration.
 
-    Pair 0: Star K(1,5) vs Path P6 — WL succeeds (different degrees)
-    Pair 1: C6 vs C3+C3 — WL fails (both 2-regular)
-    Pair 2: C8 vs C4+C4 — WL fails (both 2-regular)
+    Pair 0: Star K(1,5) vs Path P6 — WL succeeds at iteration 0
+            (different degree distributions → immediate distinction)
+    Pair 1: C6+short chord vs C6+long chord — WL succeeds at iteration 1
+            (same degree sequence, but neighborhoods differ after refinement)
+    Pair 2: C6 vs C3+C3 — WL fails (both 2-regular, fundamental limit)
     """
     pairs = []
 
@@ -124,9 +126,27 @@ def build_example_pairs() -> list[dict]:
         "name": "Star K\u2081,\u2085 vs Path P\u2086",
         "graphA": {"adj": star, "name": "Star K\u2081,\u2085"},
         "graphB": {"adj": path, "name": "Path P\u2086"},
+        "description": "Different degree distributions make these trivially distinguishable.",
     })
 
-    # Pair 1: C6 (hexagon) vs C3 + C3 (two triangles)
+    # Pair 1: C6 + short chord (0-2) vs C6 + long chord (0-3)
+    # Both have degree sequence [2,2,2,2,3,3] — identical at iteration 0.
+    # At iteration 1, the short chord creates triangles while the long chord
+    # does not, causing divergent color refinement.
+    c6_short = torch.zeros(6, 6)
+    for i, j in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0), (0, 2)]:
+        c6_short[i, j] = c6_short[j, i] = 1.0
+    c6_long = torch.zeros(6, 6)
+    for i, j in [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0), (0, 3)]:
+        c6_long[i, j] = c6_long[j, i] = 1.0
+    pairs.append({
+        "name": "C\u2086+short chord vs C\u2086+long chord",
+        "graphA": {"adj": c6_short, "name": "C\u2086+e(0,2)"},
+        "graphB": {"adj": c6_long, "name": "C\u2086+e(0,3)"},
+        "description": "Same degree sequence [2,2,2,2,3,3]. Neighborhood refinement reveals structural difference.",
+    })
+
+    # Pair 2: C6 (hexagon) vs C3 + C3 (two triangles)
     c6 = _make_cycle(6)
     c3c3 = torch.zeros(6, 6)
     for i, j in [(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3)]:
@@ -135,17 +155,7 @@ def build_example_pairs() -> list[dict]:
         "name": "C\u2086 vs C\u2083\u222aC\u2083",
         "graphA": {"adj": c6, "name": "C\u2086 (hexagon)"},
         "graphB": {"adj": c3c3, "name": "C\u2083\u222AC\u2083 (two triangles)"},
-    })
-
-    # Pair 2: C8 (octagon) vs C4 + C4 (two squares)
-    c8 = _make_cycle(8)
-    c4c4 = torch.zeros(8, 8)
-    for i, j in [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]:
-        c4c4[i, j] = c4c4[j, i] = 1.0
-    pairs.append({
-        "name": "C\u2088 vs C\u2084\u222aC\u2084",
-        "graphA": {"adj": c8, "name": "C\u2088 (octagon)"},
-        "graphB": {"adj": c4c4, "name": "C\u2084\u222AC\u2084 (two squares)"},
+        "description": "Both 2-regular \u2014 all nodes identical to WL. This is the fundamental expressivity limit of 1-WL and message-passing GNNs.",
     })
 
     return pairs

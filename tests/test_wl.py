@@ -71,14 +71,15 @@ class TestWLTest:
         assert result["distinguished"] is True
         assert result["distinguishing_iteration"] == 0
 
-    def test_c6_vs_c3c3_not_distinguished(self):
-        """WL should NOT distinguish C6 from C3+C3 (both 2-regular)."""
+    def test_chord_graphs_distinguished_at_iter1(self):
+        """C6+short chord vs C6+long chord: same degree seq, distinguished at iter 1."""
         pairs = build_example_pairs()
         result = wl_test(pairs[1]["graphA"]["adj"], pairs[1]["graphB"]["adj"])
-        assert result["distinguished"] is False
+        assert result["distinguished"] is True
+        assert result["distinguishing_iteration"] == 1
 
-    def test_c8_vs_c4c4_not_distinguished(self):
-        """WL should NOT distinguish C8 from C4+C4 (both 2-regular)."""
+    def test_c6_vs_c3c3_not_distinguished(self):
+        """WL should NOT distinguish C6 from C3+C3 (both 2-regular)."""
         pairs = build_example_pairs()
         result = wl_test(pairs[2]["graphA"]["adj"], pairs[2]["graphB"]["adj"])
         assert result["distinguished"] is False

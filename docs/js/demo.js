@@ -821,13 +821,13 @@
     drawChart('mesh-vae-chart', EXAMPLES.trainingCurvesSpatial.meshVae, 'loss', { color: '#ec4899', yLabel: 'Mesh VAE loss' });
   }
 
-  // ── WL Test: Color refinement visualization ───────────────────────────
+  // ── WL Test: Interactive color refinement visualization ─────────────
   const WL_PALETTE = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-  function renderWLGraphDemo(container, graphData, nodeColors) {
-    const w = container.clientWidth || 140;
-    const h = container.clientHeight || 140;
-    const pad = 16;
+  function renderWLGraphD3(container, graphData, nodeColors, opts = {}) {
+    const w = opts.size || container.clientWidth || 180;
+    const h = opts.size || container.clientHeight || 180;
+    const pad = 20;
     const positions = graphData.positions;
     const edges = graphData.edges;
 
@@ -851,44 +851,110 @@
       cy + (y - midY) * scale,
     ]);
 
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svg.style.width = '100%';
-    svg.style.height = '100%';
+    // Use D3 for animated transitions
+    const svg = d3.select(container).selectAll('svg').data([0]);
+    const svgEnter = svg.enter().append('svg')
+      .attr('viewBox', `0 0 ${w} ${h}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('width', '100%')
+      .style('height', '100%');
+    const svgMerged = svgEnter.merge(svg);
 
-    for (const [i, j] of edges) {
-      if (i < screenPos.length && j < screenPos.length) {
-        const line = document.createElementNS(ns, 'line');
-        line.setAttribute('x1', screenPos[i][0]);
-        line.setAttribute('y1', screenPos[i][1]);
-        line.setAttribute('x2', screenPos[j][0]);
-        line.setAttribute('y2', screenPos[j][1]);
-        line.setAttribute('stroke', '#9ca3af');
-        line.setAttribute('stroke-width', '1.2');
-        line.setAttribute('stroke-opacity', '0.5');
-        svg.appendChild(line);
-      }
-    }
+    // Edges
+    let edgeG = svgMerged.selectAll('g.wl-edges').data([0]);
+    edgeG = edgeG.enter().append('g').attr('class', 'wl-edges').merge(edgeG);
 
-    for (let i = 0; i < screenPos.length; i++) {
-      const [x, y] = screenPos[i];
-      const color = nodeColors && nodeColors.length > i
+    const edgeData = edges.filter(([i, j]) => i < screenPos.length && j < screenPos.length);
+    const lines = edgeG.selectAll('line').data(edgeData, (d, i) => i);
+    lines.enter().append('line')
+      .attr('stroke', '#9ca3af')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.4)
+      .attr('x1', d => screenPos[d[0]][0]).attr('y1', d => screenPos[d[0]][1])
+      .attr('x2', d => screenPos[d[1]][0]).attr('y2', d => screenPos[d[1]][1]);
+
+    // Nodes
+    let nodeG = svgMerged.selectAll('g.wl-nodes').data([0]);
+    nodeG = nodeG.enter().append('g').attr('class', 'wl-nodes').merge(nodeG);
+
+    const nodeData = screenPos.map(([x, y], i) => ({
+      x, y, i,
+      color: nodeColors && nodeColors.length > i
         ? WL_PALETTE[nodeColors[i] % WL_PALETTE.length]
-        : '#6366f1';
-      const circle = document.createElementNS(ns, 'circle');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', '5.5');
-      circle.setAttribute('fill', color);
-      circle.setAttribute('stroke', '#fff');
-      circle.setAttribute('stroke-width', '1.2');
-      svg.appendChild(circle);
+        : '#6366f1'
+    }));
+
+    const circles = nodeG.selectAll('circle').data(nodeData, d => d.i);
+    circles.enter().append('circle')
+      .attr('cx', d => d.x).attr('cy', d => d.y)
+      .attr('r', opts.nodeRadius || 7)
+      .attr('fill', d => d.color)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5)
+    .merge(circles)
+      .transition().duration(400).ease(d3.easeCubicOut)
+      .attr('fill', d => d.color);
+
+    // Node labels (color index)
+    if (opts.showLabels !== false) {
+      const labels = nodeG.selectAll('text').data(nodeData, d => d.i);
+      labels.enter().append('text')
+        .attr('x', d => d.x).attr('y', d => d.y)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', '8px')
+        .attr('font-family', 'var(--font-mono, monospace)')
+        .attr('font-weight', '700')
+        .attr('fill', '#fff')
+        .attr('pointer-events', 'none')
+        .text(d => nodeColors ? nodeColors[d.i] : '')
+      .merge(labels)
+        .transition().duration(400)
+        .text(d => nodeColors ? nodeColors[d.i] : '');
+    }
+  }
+
+  function buildHistogramData(nodeColors) {
+    const counts = {};
+    if (!nodeColors) return [];
+    for (const c of nodeColors) {
+      counts[c] = (counts[c] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([color, count]) => ({ colorIdx: +color, count }))
+      .sort((a, b) => a.colorIdx - b.colorIdx);
+  }
+
+  function renderHistogramBar(container, histA, histB, numNodes) {
+    container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'wl-histogram-compare';
+
+    function makeBar(hist, label) {
+      const row = document.createElement('div');
+      row.className = 'wl-hist-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'wl-hist-label';
+      lbl.textContent = label;
+      row.appendChild(lbl);
+
+      const bar = document.createElement('div');
+      bar.className = 'wl-hist-bar';
+      for (const h of hist) {
+        const seg = document.createElement('div');
+        seg.className = 'wl-hist-seg';
+        seg.style.width = ((h.count / numNodes) * 100) + '%';
+        seg.style.background = WL_PALETTE[h.colorIdx % WL_PALETTE.length];
+        seg.title = `Color ${h.colorIdx}: ${h.count} node${h.count > 1 ? 's' : ''}`;
+        bar.appendChild(seg);
+      }
+      row.appendChild(bar);
+      return row;
     }
 
-    container.innerHTML = '';
-    container.appendChild(svg);
+    wrap.appendChild(makeBar(histA, 'G₁'));
+    wrap.appendChild(makeBar(histB, 'G₂'));
+    container.appendChild(wrap);
   }
 
   function renderWLSection() {
@@ -904,10 +970,13 @@
       const header = document.createElement('div');
       header.className = 'wl-pair-header';
 
+      const titleRow = document.createElement('div');
+      titleRow.className = 'wl-pair-title-row';
+
       const title = document.createElement('h3');
       title.className = 'wl-pair-title';
       title.textContent = pair.name;
-      header.appendChild(title);
+      titleRow.appendChild(title);
 
       const verdict = document.createElement('span');
       if (pair.distinguished) {
@@ -917,66 +986,212 @@
         verdict.className = 'wl-verdict-badge wl-verdict--fail';
         verdict.innerHTML = '&#x2717; Indistinguishable';
       }
-      header.appendChild(verdict);
-      pairEl.appendChild(header);
+      titleRow.appendChild(verdict);
+      header.appendChild(titleRow);
 
-      // Iteration strip
-      const strip = document.createElement('div');
-      strip.className = 'wl-iteration-strip';
-
-      for (const iter of pair.iterations) {
-        const stepEl = document.createElement('div');
-        stepEl.className = 'wl-step';
-
-        const stepLabel = document.createElement('div');
-        stepLabel.className = 'wl-step-label';
-        stepLabel.textContent = 'Iteration ' + iter.step;
-        stepEl.appendChild(stepLabel);
-
-        const graphsRow = document.createElement('div');
-        graphsRow.className = 'wl-step-graphs';
-
-        // Graph A
-        const wrapA = document.createElement('div');
-        wrapA.className = 'wl-graph-wrap';
-        const labelA = document.createElement('div');
-        labelA.className = 'wl-graph-label';
-        labelA.textContent = pair.graphA.name;
-        wrapA.appendChild(labelA);
-        const vizA = document.createElement('div');
-        vizA.className = 'wl-graph-viz';
-        wrapA.appendChild(vizA);
-        graphsRow.appendChild(wrapA);
-
-        // Graph B
-        const wrapB = document.createElement('div');
-        wrapB.className = 'wl-graph-wrap';
-        const labelB = document.createElement('div');
-        labelB.className = 'wl-graph-label';
-        labelB.textContent = pair.graphB.name;
-        wrapB.appendChild(labelB);
-        const vizB = document.createElement('div');
-        vizB.className = 'wl-graph-viz';
-        wrapB.appendChild(vizB);
-        graphsRow.appendChild(wrapB);
-
-        stepEl.appendChild(graphsRow);
-
-        // Match badge
-        const match = document.createElement('div');
-        match.className = iter.histograms_match ? 'wl-match wl-match--same' : 'wl-match wl-match--diff';
-        match.textContent = iter.histograms_match ? 'Histograms match' : 'Histograms differ';
-        stepEl.appendChild(match);
-
-        strip.appendChild(stepEl);
-
-        renderWLGraphDemo(vizA, pair.graphA, iter.colors_a);
-        renderWLGraphDemo(vizB, pair.graphB, iter.colors_b);
+      // Description
+      if (pair.description) {
+        const desc = document.createElement('p');
+        desc.className = 'wl-pair-desc';
+        desc.textContent = pair.description;
+        header.appendChild(desc);
       }
 
-      pairEl.appendChild(strip);
+      pairEl.appendChild(header);
+
+      // Interactive viewer
+      const viewer = document.createElement('div');
+      viewer.className = 'wl-viewer';
+
+      // Current step state
+      let currentStep = 0;
+      const maxStep = pair.iterations.length - 1;
+
+      // Step indicator
+      const stepIndicator = document.createElement('div');
+      stepIndicator.className = 'wl-step-indicator';
+
+      const btnPrev = document.createElement('button');
+      btnPrev.className = 'wl-nav-btn';
+      btnPrev.innerHTML = '&#8592;';
+      btnPrev.title = 'Previous iteration';
+
+      const stepText = document.createElement('span');
+      stepText.className = 'wl-step-text';
+
+      const btnNext = document.createElement('button');
+      btnNext.className = 'wl-nav-btn';
+      btnNext.innerHTML = '&#8594;';
+      btnNext.title = 'Next iteration';
+
+      const btnPlay = document.createElement('button');
+      btnPlay.className = 'wl-nav-btn wl-play-btn';
+      btnPlay.innerHTML = '&#9654;';
+      btnPlay.title = 'Auto-play';
+
+      stepIndicator.appendChild(btnPrev);
+      stepIndicator.appendChild(stepText);
+      stepIndicator.appendChild(btnNext);
+      stepIndicator.appendChild(btnPlay);
+      viewer.appendChild(stepIndicator);
+
+      // Slider
+      const sliderWrap = document.createElement('div');
+      sliderWrap.className = 'wl-slider-wrap';
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = '0';
+      slider.max = String(maxStep);
+      slider.value = '0';
+      slider.className = 'wl-slider';
+      sliderWrap.appendChild(slider);
+
+      // Step dots
+      const dots = document.createElement('div');
+      dots.className = 'wl-step-dots';
+      for (let i = 0; i <= maxStep; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'wl-dot' + (i === 0 ? ' active' : '');
+        dot.dataset.step = i;
+        dots.appendChild(dot);
+      }
+      sliderWrap.appendChild(dots);
+      viewer.appendChild(sliderWrap);
+
+      // Graphs side by side
+      const graphsRow = document.createElement('div');
+      graphsRow.className = 'wl-graphs-row';
+
+      const wrapA = document.createElement('div');
+      wrapA.className = 'wl-graph-panel';
+      const labelA = document.createElement('div');
+      labelA.className = 'wl-graph-label';
+      labelA.textContent = pair.graphA.name;
+      wrapA.appendChild(labelA);
+      const vizA = document.createElement('div');
+      vizA.className = 'wl-graph-viz';
+      wrapA.appendChild(vizA);
+      graphsRow.appendChild(wrapA);
+
+      // VS divider
+      const vs = document.createElement('div');
+      vs.className = 'wl-vs';
+      vs.textContent = 'vs';
+      graphsRow.appendChild(vs);
+
+      const wrapB = document.createElement('div');
+      wrapB.className = 'wl-graph-panel';
+      const labelB = document.createElement('div');
+      labelB.className = 'wl-graph-label';
+      labelB.textContent = pair.graphB.name;
+      wrapB.appendChild(labelB);
+      const vizB = document.createElement('div');
+      vizB.className = 'wl-graph-viz';
+      wrapB.appendChild(vizB);
+      graphsRow.appendChild(wrapB);
+
+      viewer.appendChild(graphsRow);
+
+      // Histogram comparison
+      const histArea = document.createElement('div');
+      histArea.className = 'wl-histogram-area';
+      viewer.appendChild(histArea);
+
+      // Match verdict for current step
+      const matchBadge = document.createElement('div');
+      matchBadge.className = 'wl-step-match';
+      viewer.appendChild(matchBadge);
+
+      // Color count info
+      const colorInfo = document.createElement('div');
+      colorInfo.className = 'wl-color-info';
+      viewer.appendChild(colorInfo);
+
+      pairEl.appendChild(viewer);
       container.appendChild(pairEl);
       observer.observe(pairEl);
+
+      // Render function
+      function renderStep(step) {
+        currentStep = step;
+        const iter = pair.iterations[step];
+
+        stepText.textContent = `Iteration ${iter.step}`;
+        slider.value = String(step);
+
+        // Update dots
+        dots.querySelectorAll('.wl-dot').forEach((d, i) => {
+          d.classList.toggle('active', i === step);
+          d.classList.toggle('past', i < step);
+        });
+
+        // Update nav buttons
+        btnPrev.disabled = step === 0;
+        btnNext.disabled = step === maxStep;
+
+        // Render graphs with animated color transitions
+        renderWLGraphD3(vizA, pair.graphA, iter.colors_a, { nodeRadius: 8 });
+        renderWLGraphD3(vizB, pair.graphB, iter.colors_b, { nodeRadius: 8 });
+
+        // Histograms
+        const histA = buildHistogramData(iter.colors_a);
+        const histB = buildHistogramData(iter.colors_b);
+        const numNodes = iter.colors_a.length;
+        renderHistogramBar(histArea, histA, histB, numNodes);
+
+        // Match badge
+        if (iter.histograms_match) {
+          matchBadge.className = 'wl-step-match wl-step-match--same';
+          matchBadge.textContent = 'Histograms match — cannot distinguish';
+        } else {
+          matchBadge.className = 'wl-step-match wl-step-match--diff';
+          matchBadge.textContent = 'Histograms differ — graphs distinguished!';
+        }
+
+        // Color count
+        const nA = iter.num_colors_a || new Set(iter.colors_a).size;
+        const nB = iter.num_colors_b || new Set(iter.colors_b).size;
+        colorInfo.innerHTML = `<span>${pair.graphA.name}: <strong>${nA}</strong> color${nA > 1 ? 's' : ''}</span><span>${pair.graphB.name}: <strong>${nB}</strong> color${nB > 1 ? 's' : ''}</span>`;
+      }
+
+      // Events
+      btnPrev.addEventListener('click', () => { if (currentStep > 0) renderStep(currentStep - 1); });
+      btnNext.addEventListener('click', () => { if (currentStep < maxStep) renderStep(currentStep + 1); });
+
+      slider.addEventListener('input', () => renderStep(+slider.value));
+
+      dots.querySelectorAll('.wl-dot').forEach(dot => {
+        dot.addEventListener('click', () => renderStep(+dot.dataset.step));
+      });
+
+      let playing = false;
+      let playTimer = null;
+      btnPlay.addEventListener('click', () => {
+        if (playing) {
+          clearInterval(playTimer);
+          playing = false;
+          btnPlay.innerHTML = '&#9654;';
+          btnPlay.classList.remove('playing');
+        } else {
+          playing = true;
+          btnPlay.innerHTML = '&#9646;&#9646;';
+          btnPlay.classList.add('playing');
+          if (currentStep >= maxStep) renderStep(0);
+          playTimer = setInterval(() => {
+            if (currentStep < maxStep) {
+              renderStep(currentStep + 1);
+            } else {
+              clearInterval(playTimer);
+              playing = false;
+              btnPlay.innerHTML = '&#9654;';
+              btnPlay.classList.remove('playing');
+            }
+          }, 1200);
+        }
+      });
+
+      // Initial render
+      renderStep(0);
     }
   }
 

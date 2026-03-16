@@ -11438,6 +11438,7 @@
   "wlTest": [
     {
       "name": "Star K₁,₅ vs Path P₆",
+      "description": "Different degree distributions make these trivially distinguishable.",
       "graphA": {
         "name": "Star K₁,₅",
         "num_nodes": 6,
@@ -11556,14 +11557,24 @@
             1
           ],
           "colors_b": [
+            0,
             1,
-            2,
-            2,
-            2,
-            2,
-            1
+            1,
+            1,
+            1,
+            0
           ],
-          "histograms_match": false
+          "histogram_a": {
+            "0": 1,
+            "1": 5
+          },
+          "histogram_b": {
+            "1": 2,
+            "2": 4
+          },
+          "histograms_match": false,
+          "num_colors_a": 2,
+          "num_colors_b": 2
         },
         {
           "step": 1,
@@ -11576,14 +11587,25 @@
             1
           ],
           "colors_b": [
+            0,
+            1,
             2,
-            3,
-            4,
-            4,
-            3,
-            2
+            2,
+            1,
+            0
           ],
-          "histograms_match": false
+          "histogram_a": {
+            "0": 1,
+            "1": 5
+          },
+          "histogram_b": {
+            "2": 2,
+            "3": 2,
+            "4": 2
+          },
+          "histograms_match": false,
+          "num_colors_a": 2,
+          "num_colors_b": 3
         },
         {
           "step": 2,
@@ -11596,14 +11618,25 @@
             1
           ],
           "colors_b": [
+            0,
+            1,
             2,
-            3,
-            4,
-            4,
-            3,
-            2
+            2,
+            1,
+            0
           ],
-          "histograms_match": false
+          "histogram_a": {
+            "0": 1,
+            "1": 5
+          },
+          "histogram_b": {
+            "2": 2,
+            "3": 2,
+            "4": 2
+          },
+          "histograms_match": false,
+          "num_colors_a": 2,
+          "num_colors_b": 3
         },
         {
           "step": 3,
@@ -11616,19 +11649,348 @@
             1
           ],
           "colors_b": [
+            0,
+            1,
             2,
+            2,
+            1,
+            0
+          ],
+          "histogram_a": {
+            "0": 1,
+            "1": 5
+          },
+          "histogram_b": {
+            "2": 2,
+            "3": 2,
+            "4": 2
+          },
+          "histograms_match": false,
+          "num_colors_a": 2,
+          "num_colors_b": 3
+        },
+        {
+          "step": 4,
+          "colors_a": [
+            0,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "colors_b": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            0
+          ],
+          "histogram_a": {
+            "0": 1,
+            "1": 5
+          },
+          "histogram_b": {
+            "2": 2,
+            "3": 2,
+            "4": 2
+          },
+          "histograms_match": false,
+          "num_colors_a": 2,
+          "num_colors_b": 3
+        }
+      ]
+    },
+    {
+      "name": "C₆+short chord vs C₆+long chord",
+      "description": "Same degree sequence [2,2,2,2,3,3]. Neighborhood refinement reveals structural difference.",
+      "graphA": {
+        "name": "C₆+e(0,2)",
+        "num_nodes": 6,
+        "positions": [
+          [
+            1.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.866
+          ],
+          [
+            -0.5,
+            0.866
+          ],
+          [
+            -1.0,
+            0.0
+          ],
+          [
+            -0.5,
+            -0.866
+          ],
+          [
+            0.5,
+            -0.866
+          ]
+        ],
+        "edges": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
             3,
+            4
+          ],
+          [
             4,
+            5
+          ]
+        ]
+      },
+      "graphB": {
+        "name": "C₆+e(0,3)",
+        "num_nodes": 6,
+        "positions": [
+          [
+            1.0,
+            0.0
+          ],
+          [
+            0.5,
+            0.866
+          ],
+          [
+            -0.5,
+            0.866
+          ],
+          [
+            -1.0,
+            0.0
+          ],
+          [
+            -0.5,
+            -0.866
+          ],
+          [
+            0.5,
+            -0.866
+          ]
+        ],
+        "edges": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            5
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
             4,
+            5
+          ]
+        ]
+      },
+      "distinguished": true,
+      "distinguishing_iteration": 1,
+      "iterations": [
+        {
+          "step": 0,
+          "colors_a": [
+            0,
+            1,
+            0,
+            1,
+            1,
+            1
+          ],
+          "colors_b": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "histogram_a": {
+            "0": 2,
+            "1": 4
+          },
+          "histogram_b": {
+            "0": 2,
+            "1": 4
+          },
+          "histograms_match": true,
+          "num_colors_a": 2,
+          "num_colors_b": 2
+        },
+        {
+          "step": 1,
+          "colors_a": [
+            0,
+            1,
+            0,
+            2,
             3,
             2
           ],
-          "histograms_match": false
+          "colors_b": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "histogram_a": {
+            "0": 2,
+            "1": 1,
+            "2": 2,
+            "3": 1
+          },
+          "histogram_b": {
+            "0": 2,
+            "2": 4
+          },
+          "histograms_match": false,
+          "num_colors_a": 4,
+          "num_colors_b": 2
+        },
+        {
+          "step": 2,
+          "colors_a": [
+            0,
+            1,
+            0,
+            2,
+            3,
+            2
+          ],
+          "colors_b": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "histogram_a": {
+            "0": 2,
+            "1": 1,
+            "2": 2,
+            "3": 1
+          },
+          "histogram_b": {
+            "4": 2,
+            "5": 4
+          },
+          "histograms_match": false,
+          "num_colors_a": 4,
+          "num_colors_b": 2
+        },
+        {
+          "step": 3,
+          "colors_a": [
+            0,
+            1,
+            0,
+            2,
+            3,
+            2
+          ],
+          "colors_b": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "histogram_a": {
+            "0": 2,
+            "1": 1,
+            "2": 2,
+            "3": 1
+          },
+          "histogram_b": {
+            "4": 2,
+            "5": 4
+          },
+          "histograms_match": false,
+          "num_colors_a": 4,
+          "num_colors_b": 2
+        },
+        {
+          "step": 4,
+          "colors_a": [
+            0,
+            1,
+            0,
+            2,
+            3,
+            2
+          ],
+          "colors_b": [
+            0,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "histogram_a": {
+            "0": 2,
+            "1": 1,
+            "2": 2,
+            "3": 1
+          },
+          "histogram_b": {
+            "4": 2,
+            "5": 4
+          },
+          "histograms_match": false,
+          "num_colors_a": 4,
+          "num_colors_b": 2
         }
       ]
     },
     {
       "name": "C₆ vs C₃∪C₃",
+      "description": "Both 2-regular — all nodes identical to WL. This is the fundamental expressivity limit of 1-WL and message-passing GNNs.",
       "graphA": {
         "name": "C₆ (hexagon)",
         "num_nodes": 6,
@@ -11762,7 +12124,15 @@
             0,
             0
           ],
-          "histograms_match": true
+          "histogram_a": {
+            "0": 6
+          },
+          "histogram_b": {
+            "0": 6
+          },
+          "histograms_match": true,
+          "num_colors_a": 1,
+          "num_colors_b": 1
         },
         {
           "step": 1,
@@ -11782,7 +12152,15 @@
             0,
             0
           ],
-          "histograms_match": true
+          "histogram_a": {
+            "0": 6
+          },
+          "histogram_b": {
+            "0": 6
+          },
+          "histograms_match": true,
+          "num_colors_a": 1,
+          "num_colors_b": 1
         },
         {
           "step": 2,
@@ -11802,7 +12180,15 @@
             0,
             0
           ],
-          "histograms_match": true
+          "histogram_a": {
+            "0": 6
+          },
+          "histogram_b": {
+            "0": 6
+          },
+          "histograms_match": true,
+          "num_colors_a": 1,
+          "num_colors_b": 1
         },
         {
           "step": 3,
@@ -11822,188 +12208,19 @@
             0,
             0
           ],
-          "histograms_match": true
-        }
-      ]
-    },
-    {
-      "name": "C₈ vs C₄∪C₄",
-      "graphA": {
-        "name": "C₈ (octagon)",
-        "num_nodes": 8,
-        "positions": [
-          [
-            1.0,
-            0.0
-          ],
-          [
-            0.7071,
-            0.7071
-          ],
-          [
-            0.0,
-            1.0
-          ],
-          [
-            -0.7071,
-            0.7071
-          ],
-          [
-            -1.0,
-            0.0
-          ],
-          [
-            -0.7071,
-            -0.7071
-          ],
-          [
-            -0.0,
-            -1.0
-          ],
-          [
-            0.7071,
-            -0.7071
-          ]
-        ],
-        "edges": [
-          [
-            0,
-            1
-          ],
-          [
-            0,
-            7
-          ],
-          [
-            1,
-            2
-          ],
-          [
-            2,
-            3
-          ],
-          [
-            3,
-            4
-          ],
-          [
-            4,
-            5
-          ],
-          [
-            5,
-            6
-          ],
-          [
-            6,
-            7
-          ]
-        ]
-      },
-      "graphB": {
-        "name": "C₄∪C₄ (two squares)",
-        "num_nodes": 8,
-        "positions": [
-          [
-            -0.2,
-            0.0
-          ],
-          [
-            -0.6,
-            1.0
-          ],
-          [
-            -1.0,
-            0.0
-          ],
-          [
-            -0.6,
-            -1.0
-          ],
-          [
-            1.0,
-            0.0
-          ],
-          [
-            0.6,
-            1.0
-          ],
-          [
-            0.2,
-            0.0
-          ],
-          [
-            0.6,
-            -1.0
-          ]
-        ],
-        "edges": [
-          [
-            0,
-            1
-          ],
-          [
-            0,
-            3
-          ],
-          [
-            1,
-            2
-          ],
-          [
-            2,
-            3
-          ],
-          [
-            4,
-            5
-          ],
-          [
-            4,
-            7
-          ],
-          [
-            5,
-            6
-          ],
-          [
-            6,
-            7
-          ]
-        ]
-      },
-      "distinguished": false,
-      "distinguishing_iteration": null,
-      "iterations": [
-        {
-          "step": 0,
-          "colors_a": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "colors_b": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "histograms_match": true
+          "histogram_a": {
+            "0": 6
+          },
+          "histogram_b": {
+            "0": 6
+          },
+          "histograms_match": true,
+          "num_colors_a": 1,
+          "num_colors_b": 1
         },
         {
-          "step": 1,
+          "step": 4,
           "colors_a": [
-            0,
-            0,
             0,
             0,
             0,
@@ -12017,59 +12234,17 @@
             0,
             0,
             0,
-            0,
-            0,
             0
           ],
-          "histograms_match": true
-        },
-        {
-          "step": 2,
-          "colors_a": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "colors_b": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "histograms_match": true
-        },
-        {
-          "step": 3,
-          "colors_a": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "colors_b": [
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "histograms_match": true
+          "histogram_a": {
+            "0": 6
+          },
+          "histogram_b": {
+            "0": 6
+          },
+          "histograms_match": true,
+          "num_colors_a": 1,
+          "num_colors_b": 1
         }
       ]
     }
