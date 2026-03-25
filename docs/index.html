@@ -21,7 +21,10 @@
         <li><a href="#vae">VAE</a></li>
         <li><a href="#spatial">Spatial 3D</a></li>
         <li><a href="#mesh">Mesh</a></li>
+        <li><a href="#physics">Physics</a></li>
+        <li><a href="#hyperbolic">Hyperbolic</a></li>
         <li><a href="#wl">WL Test</a></li>
+        <li><a href="#guide">Guide</a></li>
       </ul>
     </div>
   </nav>
@@ -354,10 +357,161 @@
     </div>
   </section>
 
+  <!-- Physics GNN Section -->
+  <section id="physics">
+    <div class="container">
+      <span class="section-label">06 &mdash; Physics-Informed GNN</span>
+      <h2>Discrete Differential Geometry on Graphs</h2>
+      <p class="section-desc">
+        Physics-informed graph neural networks that embed geometric priors directly into the message-passing
+        framework. Cotangent Laplacian edge weights, discrete curvature encodings, reaction-diffusion dynamics
+        for pattern formation, and energy-based regularisation (Dirichlet, total variation, elastic) ensure
+        that learned representations respect the underlying differential geometry of the domain.
+      </p>
+
+      <div class="physics-layout fade-in">
+        <div class="method-panel">
+          <h3>Architecture</h3>
+          <div class="method-steps">
+            <div class="method-step">
+              <span class="method-step-num">1</span>
+              <div>
+                <strong>Cotangent Laplacian</strong>
+                <p>Compute geometric edge weights from vertex positions using cotangent weights, replacing the
+                   combinatorial Laplacian with a mesh-aware operator.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">2</span>
+              <div>
+                <strong>Curvature Encoding</strong>
+                <p>Discrete mean, Gaussian, and principal curvatures computed per vertex and injected as
+                   positional node features into the GNN encoder.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">3</span>
+              <div>
+                <strong>Reaction-Diffusion</strong>
+                <p>Gray-Scott dynamics on graph structure for pattern formation: coupled diffusion of two
+                   species with nonlinear reaction terms drives Turing-like instabilities.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">4</span>
+              <div>
+                <strong>Energy Regularisation</strong>
+                <p>Dirichlet energy for smoothness, total variation for edge-preserving gradients, and elastic
+                   energy for shape preservation &mdash; all computed on the graph Laplacian.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="physics-viz-panel">
+          <div class="physics-demo-graphs" id="physics-demo-graphs"></div>
+          <div class="metrics-grid fade-in fade-in-delay-1">
+            <div class="card metric-card">
+              <span class="metric-value">49</span>
+              <span class="metric-label">Nodes</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">84</span>
+              <span class="metric-label">Edges</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">6</span>
+              <span class="metric-label">Curvatures</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">3</span>
+              <span class="metric-label">Energies</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hyperbolic GNN Section -->
+  <section id="hyperbolic">
+    <div class="container">
+      <span class="section-label">07 &mdash; Hyperbolic GNN</span>
+      <h2>Graph Neural Networks in Hyperbolic Space</h2>
+      <p class="section-desc">
+        Embedding hierarchical data in the Poincar&eacute; ball model of hyperbolic space,
+        where trees embed with zero distortion. Exponential volume growth matches the
+        exponential branching of hierarchical structures, enabling faithful low-dimensional representations.
+      </p>
+
+      <div class="hyperbolic-layout fade-in">
+        <div class="method-panel">
+          <h3>Method</h3>
+          <div class="method-steps">
+            <div class="method-step">
+              <span class="method-step-num">1</span>
+              <div>
+                <strong>Poincar&eacute; Ball Model</strong>
+                <p>Map data to hyperbolic space where distance grows exponentially near the boundary.
+                   The metric tensor g<sub>x</sub> = (2/(1&minus;||x||&sup2;))&sup2; &middot; I warps Euclidean distances.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">2</span>
+              <div>
+                <strong>Hyperbolic Message Passing</strong>
+                <p>Aggregate neighbours via logmap &rarr; tangent space &rarr; expmap.
+                   Operations stay on the manifold throughout the forward pass.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">3</span>
+              <div>
+                <strong>Riemannian Optimization</strong>
+                <p>RiemannianAdam preserves manifold constraints during gradient descent
+                   by rescaling gradients with the inverse metric tensor.</p>
+              </div>
+            </div>
+            <div class="method-step">
+              <span class="method-step-num">4</span>
+              <div>
+                <strong>Geodesic Visualization</strong>
+                <p>Curved arcs orthogonal to the boundary circle &mdash; the shortest paths
+                   in hyperbolic geometry rendered in the Poincar&eacute; disk.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hyperbolic-viz-panel">
+          <div class="hyperbolic-demo-disk" id="hyperbolic-demo-disk"></div>
+          <div class="metrics-grid fade-in fade-in-delay-1">
+            <div class="card metric-card">
+              <span class="metric-value">15</span>
+              <span class="metric-label">Nodes</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">14</span>
+              <span class="metric-label">Edges</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">4</span>
+              <span class="metric-label">Levels</span>
+            </div>
+            <div class="card metric-card">
+              <span class="metric-value">0</span>
+              <span class="metric-label">Distortion</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- WL Test Section -->
   <section id="wl">
     <div class="container">
-      <span class="section-label">06 &mdash; Weisfeiler-Leman Test</span>
+      <span class="section-label">08 &mdash; Weisfeiler-Leman Test</span>
       <h2>1-WL Color Refinement &amp; GNN Expressivity</h2>
       <p class="section-desc">
         The 1-dimensional Weisfeiler-Leman test iteratively refines node colors by aggregating
@@ -397,6 +551,145 @@
 
         <!-- WL Pairs -->
         <div class="wl-pairs-panel fade-in" id="wl-pairs-container"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guide Section -->
+  <section id="guide">
+    <div class="container">
+      <span class="section-label">09 &mdash; Guide</span>
+      <h2>Instructions &amp; What to Observe</h2>
+      <p class="section-desc">
+        A walkthrough of every module in the Graph ML Lab. Each card explains
+        the workflow, expected outputs, and key observations for understanding graph neural networks.
+      </p>
+
+      <div class="guide-grid fade-in">
+
+        <div class="card guide-card-demo">
+          <h3>1. GNN Explorer</h3>
+          <p><strong>What it does:</strong> Node classification on Zachary&rsquo;s Karate Club (34 nodes, 78 edges) using GCN or GAT layers built from scratch.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Click <em>Load Karate Club</em> to see the force-directed graph coloured by community.</li>
+            <li>Choose GCN or GAT, set hidden dim (16), layers (2), and train for 200 epochs.</li>
+            <li>Watch the loss curve descend. Test accuracy appears when training finishes.</li>
+            <li>Enter node IDs (e.g. 0, 16, 33) and click Predict to see per-node class probabilities.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Expect 90&ndash;97% test accuracy. GAT often edges out GCN on bridge nodes like node&nbsp;2.</li>
+            <li>The loss curve should drop steeply in the first 50 epochs, then plateau.</li>
+            <li>After training, graph colours update to predicted classes &mdash; misclassified nodes near the community boundary stand out.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>2. Graph Generator</h3>
+          <p><strong>What it does:</strong> Conditional graph VAE that generates graphs matching target properties (node count, density, clustering).</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Train the generator (500 epochs). It learns to reconstruct and sample small graphs.</li>
+            <li>Set target conditions with three sliders: nodes (5&ndash;20), density (0.05&ndash;0.95), clustering (0&ndash;1).</li>
+            <li>Generate 6 samples. A gallery shows each graph with measured n, e, d values.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Generated graphs should approximately match the requested conditions &mdash; exact match is unlikely.</li>
+            <li>High density (&gt;0.7) produces near-complete graphs; low density (&lt;0.15) produces sparse trees.</li>
+            <li>High clustering + moderate density produces triangle-rich &ldquo;community&rdquo; structures.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>3. VAE / Diffusion</h3>
+          <p><strong>What it does:</strong> Graph VAE encodes graphs into a latent space; diffusion model denoises random noise into coherent graphs.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Train VAE (latent dim 8, hidden dim 32). Generate from VAE samples from the prior N(0,I).</li>
+            <li>Interpolate between two training graphs &mdash; a strip shows smooth geometric morphing.</li>
+            <li>Train diffusion (100 timesteps). Generate to see iterative denoising produce graphs.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>VAE loss = reconstruction + KL divergence. Watch for posterior collapse (KL near zero early on).</li>
+            <li>Interpolation strip shows edges gradually appearing/disappearing and positions blending.</li>
+            <li>Diffusion graphs often look more realistic (fewer isolated nodes) but train slower.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>4. Spatial 3D</h3>
+          <p><strong>What it does:</strong> Autoregressive tree VAE for 3D spatial trees and neuron morphologies, plus geometric mesh interpolation.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Choose &ldquo;Branching tree&rdquo; or &ldquo;Neuron morphology&rdquo; and generate synthetic training data.</li>
+            <li>Train the spatial VAE, then generate novel trees from the learned distribution.</li>
+            <li>For meshes: view 6 canonical shapes, train a mesh VAE, and interpolate between shapes.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Isometric projection with x/y/z axis indicators. Large nodes = soma, medium = branch points, small = tips.</li>
+            <li>Tree cards show morphological stats: n (nodes), br (branch points), tips, S (Strahler order).</li>
+            <li>Mesh interpolation strip (t=0 to t=1): positions blend linearly while edge topology transitions.</li>
+            <li>Neuron morphologies should have 3&ndash;6 primary branches with Strahler order 2&ndash;4.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>5. Physics GNN</h3>
+          <p><strong>What it does:</strong> Physics-informed GNN with cotangent Laplacians, discrete curvatures, reaction-diffusion dynamics, and energy regularisation.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Choose a scenario: Heat Diffusion (grid), Curvature Classification (3D points), Elastic Stress, or Molecular.</li>
+            <li>Generate the system, toggle physics components (curvature, diffusion, reaction-diffusion, attention, energy), and train.</li>
+            <li>Run ablation study to compare 7 configurations. Visualise heat diffusion and Gray-Scott reaction-diffusion patterns.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Full model: 90&ndash;97% on heat diffusion, 85&ndash;92% on curvature, 80&ndash;90% on stress.</li>
+            <li>Ablation: removing curvature features causes the largest accuracy drop (~5&ndash;10%).</li>
+            <li>Heat diffusion strip: heat spreads concentrically in a diamond wavefront on grids.</li>
+            <li>Gray-Scott: f=0.055, k=0.062 &rarr; spots. Try f=0.04, k=0.06 for stripes.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>6. Hyperbolic GNN</h3>
+          <p><strong>What it does:</strong> Embeds graphs in the Poincar&eacute; ball model of hyperbolic space, where hierarchical structures like trees can be represented with zero distortion.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Generate a binary tree graph. It appears in the Poincar&eacute; disk with root at centre, leaves near boundary.</li>
+            <li>Run the spring-mass simulation to optimise the layout in hyperbolic space.</li>
+            <li>Train a hyperbolic GNN with message passing via logmap/expmap.</li>
+            <li>Compare Euclidean vs Poincar&eacute; embeddings to see distortion differences.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Trees embed with near-zero distortion in hyperbolic space; Euclidean distortion is always higher.</li>
+            <li>Geodesic arcs curve towards the disk centre &mdash; the shortest paths in hyperbolic geometry.</li>
+            <li>Nodes near the boundary appear close but are actually far apart in the hyperbolic metric.</li>
+          </ul>
+        </div>
+
+        <div class="card guide-card-demo">
+          <h3>7. WL Test</h3>
+          <p><strong>What it does:</strong> Interactive 1-Weisfeiler-Leman colour refinement for testing graph isomorphism and understanding GNN expressivity limits.</p>
+          <h4>Steps</h4>
+          <ol>
+            <li>Select a graph pair (star vs path, chords, or cycles) and set iterations (1&ndash;10).</li>
+            <li>Run the test. Step through iterations with the playback controls.</li>
+          </ol>
+          <h4>Observe</h4>
+          <ul>
+            <li>Node colours split by neighbourhood structure at each iteration.</li>
+            <li>When histogram bars diverge, a &ldquo;Graphs distinguished!&rdquo; badge appears.</li>
+            <li>The minimum WL iterations needed = minimum GNN depth required (Xu et al., 2019).</li>
+            <li>Star vs Path: separated in 1 iteration (degree-5 hub). Chords: 2&ndash;3 iterations.</li>
+          </ul>
+        </div>
+
       </div>
     </div>
   </section>

@@ -1197,4 +1197,263 @@
 
   renderWLSection();
 
+  // ── Physics GNN: Heat diffusion on grid graph ─────────────────────────
+  function renderPhysicsSection() {
+    const container = document.getElementById('physics-demo-graphs');
+    if (!container) return;
+
+    const SIZE = 7;
+
+    function makeGrid(size) {
+      const nodes = [];
+      const edges = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const i = r * size + c;
+          nodes.push({ id: i, x: c, y: r });
+          if (c < size - 1) edges.push([i, i + 1]);
+          if (r < size - 1) edges.push([i, i + size]);
+        }
+      }
+      return { nodes, edges };
+    }
+
+    const { nodes, edges } = makeGrid(SIZE);
+
+    // Build adjacency list
+    const adj = new Map();
+    nodes.forEach(n => adj.set(n.id, []));
+    edges.forEach(([a, b]) => { adj.get(a).push(b); adj.get(b).push(a); });
+
+    // Initial heat: source at center
+    const sourceId = Math.floor(SIZE * SIZE / 2); // node 24
+    const heatInitial = new Float64Array(nodes.length);
+    heatInitial[sourceId] = 1.0;
+
+    // Diffuse heat
+    const ITERS = 20;
+    const ALPHA = 0.2;
+    let heat = Float64Array.from(heatInitial);
+    for (let it = 0; it < ITERS; it++) {
+      const next = Float64Array.from(heat);
+      for (let i = 0; i < nodes.length; i++) {
+        let laplacian = 0;
+        for (const j of adj.get(i)) {
+          laplacian += heat[j] - heat[i];
+        }
+        next[i] = heat[i] + ALPHA * laplacian;
+      }
+      heat = next;
+    }
+    const heatDiffused = heat;
+
+    // Color scale: blue -> orange -> red
+    const colorScale = d3.scaleSequential()
+      .domain([0, 1])
+      .interpolator(t => {
+        if (t < 0.5) {
+          return d3.interpolateRgb('#4a9eff', '#f59e0b')(t * 2);
+        }
+        return d3.interpolateRgb('#f59e0b', '#ef4444')((t - 0.5) * 2);
+      });
+
+    // Normalize heat for color mapping
+    const maxHeatDiffused = Math.max(...heatDiffused);
+
+    function renderGraph(parentEl, title, heatValues) {
+      const panel = document.createElement('div');
+      panel.className = 'physics-graph-panel';
+
+      const heading = document.createElement('h4');
+      heading.textContent = title;
+      panel.appendChild(heading);
+
+      const vizDiv = document.createElement('div');
+      vizDiv.className = 'physics-graph-viz';
+      panel.appendChild(vizDiv);
+      parentEl.appendChild(panel);
+
+      const w = 240;
+      const h = 240;
+      const pad = 30;
+      const cellW = (w - 2 * pad) / (SIZE - 1);
+      const cellH = (h - 2 * pad) / (SIZE - 1);
+
+      const svg = d3.select(vizDiv).append('svg')
+        .attr('viewBox', `0 0 ${w} ${h}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet');
+
+      // Edges
+      svg.append('g').selectAll('line')
+        .data(edges)
+        .join('line')
+        .attr('x1', d => pad + nodes[d[0]].x * cellW)
+        .attr('y1', d => pad + nodes[d[0]].y * cellH)
+        .attr('x2', d => pad + nodes[d[1]].x * cellW)
+        .attr('y2', d => pad + nodes[d[1]].y * cellH)
+        .attr('class', 'physics-edge');
+
+      // Determine max for this specific view
+      const maxVal = Math.max(...heatValues, 0.001);
+
+      // Nodes
+      svg.append('g').selectAll('circle')
+        .data(nodes)
+        .join('circle')
+        .attr('cx', d => pad + d.x * cellW)
+        .attr('cy', d => pad + d.y * cellH)
+        .attr('r', 8)
+        .attr('class', 'physics-node')
+        .attr('fill', d => colorScale(heatValues[d.id] / maxVal))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1.5);
+    }
+
+    renderGraph(container, 'Initial State', Array.from(heatInitial));
+    renderGraph(container, 'After Diffusion', Array.from(heatDiffused));
+  }
+
+  renderPhysicsSection();
+
+  // ── Hyperbolic GNN Section ──────────────────────────────────────────
+  function renderHyperbolicSection() {
+    const container = document.getElementById('hyperbolic-demo-disk');
+    if (!container) return;
+
+    const DEPTH = 4;
+
+    // Generate binary tree
+    function makeBinaryTree(depth) {
+      const nodes = [];
+      const edges = [];
+      let id = 0;
+      function addNode(level, parentId) {
+        const nodeId = id++;
+        nodes.push({ id: nodeId, level });
+        if (parentId >= 0) edges.push([parentId, nodeId]);
+        if (level < depth) {
+          addNode(level + 1, nodeId);
+          addNode(level + 1, nodeId);
+        }
+      }
+      addNode(0, -1);
+      return { nodes, edges };
+    }
+
+    const { nodes, edges } = makeBinaryTree(DEPTH);
+
+    // Embed nodes in Poincaré disk using radial layout
+    // Build children map
+    const children = new Map();
+    nodes.forEach(n => children.set(n.id, []));
+    edges.forEach(([parent, child]) => {
+      children.get(parent).push(child);
+    });
+
+    const positions = new Map();
+
+    function layoutNode(nodeId, level, angleStart, angleEnd) {
+      if (level === 0) {
+        positions.set(nodeId, [0, 0]);
+      } else {
+        const r = level / (DEPTH + 1) * 0.85;
+        const angle = (angleStart + angleEnd) / 2;
+        positions.set(nodeId, [r * Math.cos(angle), r * Math.sin(angle)]);
+      }
+      const kids = children.get(nodeId);
+      if (kids.length === 0) return;
+      const span = angleEnd - angleStart;
+      const step = span / kids.length;
+      kids.forEach((kid, i) => {
+        layoutNode(kid, level + 1, angleStart + i * step, angleStart + (i + 1) * step);
+      });
+    }
+
+    layoutNode(0, 0, 0, 2 * Math.PI);
+
+    // Geodesic arc approximation (linear interpolation for short edges)
+    function geodesicArc(p1, p2, nSamples) {
+      const points = [];
+      for (let i = 0; i <= nSamples; i++) {
+        const t = i / nSamples;
+        points.push([p1[0] * (1 - t) + p2[0] * t, p1[1] * (1 - t) + p2[1] * t]);
+      }
+      return points;
+    }
+
+    // Color by depth level
+    const levelColors = ['#ef4444', '#f59e0b', '#6366f1', '#818cf8', '#a5b4fc'];
+
+    // Create SVG
+    const svg = d3.select(container).append('svg')
+      .attr('viewBox', '-1.1 -1.1 2.2 2.2')
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
+    // Boundary circle (dashed)
+    svg.append('circle')
+      .attr('cx', 0).attr('cy', 0).attr('r', 1)
+      .attr('class', 'hyperbolic-boundary');
+
+    // Concentric distance circles
+    [0.3, 0.6, 0.85].forEach(r => {
+      svg.append('circle')
+        .attr('cx', 0).attr('cy', 0).attr('r', r)
+        .attr('class', 'hyperbolic-grid-circle');
+    });
+
+    // Draw edges as paths
+    const lineGen = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveBasis);
+    svg.append('g').selectAll('path')
+      .data(edges)
+      .join('path')
+      .attr('d', d => {
+        const p1 = positions.get(d[0]);
+        const p2 = positions.get(d[1]);
+        const pts = geodesicArc(p1, p2, 12);
+        return lineGen(pts);
+      })
+      .attr('class', 'hyperbolic-edge');
+
+    // Draw nodes
+    svg.append('g').selectAll('circle')
+      .data(nodes)
+      .join('circle')
+      .attr('cx', d => positions.get(d.id)[0])
+      .attr('cy', d => positions.get(d.id)[1])
+      .attr('r', d => d.level === 0 ? 0.06 : (d.level === 1 ? 0.045 : 0.035))
+      .attr('class', 'hyperbolic-node')
+      .attr('fill', d => levelColors[Math.min(d.level, levelColors.length - 1)]);
+  }
+
+  renderHyperbolicSection();
+
+  // ── Guide Section (injected via JS for parser compatibility) ──────────
+  (function renderGuideSection() {
+    const guideEl = document.getElementById('guide');
+    if (!guideEl) {
+      // If the HTML parser dropped the section, re-insert from source
+      const footer = document.querySelector('footer');
+      if (!footer) return;
+      fetch('index.html')
+        .then(r => r.ok ? r.text() : Promise.reject())
+        .then(html => {
+          const start = html.indexOf('<section id="guide">');
+          const end = html.indexOf('</section>', start);
+          if (start < 0 || end < 0) return;
+          const sectionHTML = html.substring(start, end + '</section>'.length);
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(sectionHTML, 'text/html');
+          const section = doc.querySelector('section');
+          if (section) {
+            document.body.insertBefore(section, footer);
+            section.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+          }
+        })
+        .catch(() => {});
+    }
+  })();
+
+  // Re-observe new fade-in elements added by JS
+  document.querySelectorAll('.fade-in:not(.visible)').forEach(el => observer.observe(el));
+
 })();

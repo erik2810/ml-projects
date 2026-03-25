@@ -38,8 +38,17 @@
         <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-spatial" data-tab="spatial">
           Spatial 3D
         </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-physics" data-tab="physics">
+          Physics GNN
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-hyperbolic" data-tab="hyperbolic">
+          Hyperbolic GNN
+        </button>
         <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-wl" data-tab="wl">
           WL Test
+        </button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-guide" data-tab="guide">
+          Guide
         </button>
       </nav>
     </div>
@@ -531,6 +540,310 @@
       </div>
     </section>
 
+    <!-- ======== Physics GNN Panel ======== -->
+    <section id="panel-physics" class="panel" role="tabpanel" aria-labelledby="tab-physics" hidden>
+      <div class="panel-header">
+        <h2>Physics-Informed GNN</h2>
+        <p class="panel-desc">Train graph neural networks grounded in differential geometry &mdash; cotangent Laplacian convolutions, reaction-diffusion dynamics, curvature-biased attention, and physics energy regularisation on real physical systems.</p>
+      </div>
+
+      <div class="panel-grid physics-layout">
+        <!-- Column 1: Dataset & Training -->
+        <div class="card controls-card">
+          <h3 class="card-title">Physical System</h3>
+          <fieldset class="fieldset">
+            <legend>Dataset</legend>
+            <div class="field">
+              <label for="phys-scenario">Scenario</label>
+              <select id="phys-scenario">
+                <option value="heat_diffusion">Heat Diffusion on Lattice</option>
+                <option value="curvature">Curvature Classification</option>
+                <option value="stress">Elastic Stress Analysis</option>
+                <option value="molecular">Molecular Structure</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="phys-num-nodes">Nodes</label>
+              <input id="phys-num-nodes" type="number" value="40" min="10" max="100" step="5">
+            </div>
+            <div class="field">
+              <label for="phys-grid-size">Grid size <span class="field-hint">(lattice only)</span></label>
+              <input id="phys-grid-size" type="number" value="7" min="4" max="12">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-phys-dataset" class="btn btn-primary" type="button">Generate System</button>
+            <span id="phys-dataset-status" class="status-text"></span>
+          </div>
+
+          <hr class="divider">
+
+          <h3 class="card-title">Training</h3>
+          <fieldset class="fieldset">
+            <legend>Architecture</legend>
+            <div class="field-row">
+              <div class="field">
+                <label for="phys-hidden-dim">Hidden dim</label>
+                <input id="phys-hidden-dim" type="number" value="32" min="8" max="128" step="8">
+              </div>
+              <div class="field">
+                <label for="phys-num-layers">Layers</label>
+                <input id="phys-num-layers" type="number" value="3" min="1" max="6">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="phys-epochs">Epochs</label>
+                <input id="phys-epochs" type="number" value="60" min="10" max="300" step="10">
+              </div>
+              <div class="field">
+                <label for="phys-lr">Learning rate</label>
+                <input id="phys-lr" type="number" value="0.001" min="0.0001" max="0.01" step="0.0001">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend>Physics Components</legend>
+            <div class="checkbox-group">
+              <label class="checkbox-label"><input type="checkbox" id="phys-use-curvature" checked> Curvature features</label>
+              <label class="checkbox-label"><input type="checkbox" id="phys-use-diffusion" checked> Multi-scale diffusion</label>
+              <label class="checkbox-label"><input type="checkbox" id="phys-use-rd" checked> Reaction-diffusion</label>
+              <label class="checkbox-label"><input type="checkbox" id="phys-use-attention" checked> Curvature attention</label>
+              <label class="checkbox-label"><input type="checkbox" id="phys-use-reg" checked> Energy regularisation</label>
+            </div>
+          </fieldset>
+
+          <div class="control-group">
+            <button id="btn-phys-train" class="btn btn-accent" type="button" disabled>Train Physics GNN</button>
+          </div>
+          <div id="phys-loss-container" class="chart-container chart-container--small"></div>
+          <output id="phys-status-log" class="status-log" aria-live="polite"></output>
+        </div>
+
+        <!-- Column 2: Analysis -->
+        <div class="card controls-card">
+          <h3 class="card-title">Analysis</h3>
+
+          <div class="control-group">
+            <button id="btn-phys-ablation" class="btn btn-secondary" type="button" disabled>Run Ablation Study</button>
+          </div>
+          <div id="phys-ablation-table" class="metrics-table"></div>
+
+          <hr class="divider">
+
+          <div class="control-group">
+            <button id="btn-phys-energy" class="btn btn-secondary" type="button" disabled>Compute Energy</button>
+          </div>
+          <div id="phys-energy-display" class="metrics-table"></div>
+
+          <hr class="divider">
+
+          <div class="control-group">
+            <button id="btn-phys-curvature" class="btn btn-secondary" type="button" disabled>Analyse Curvature</button>
+          </div>
+          <div id="phys-curvature-display" class="metrics-table"></div>
+
+          <hr class="divider">
+
+          <h3 class="card-title">Heat Diffusion</h3>
+          <div class="field">
+            <label for="phys-heat-source">Source node</label>
+            <input id="phys-heat-source" type="number" value="0" min="0">
+          </div>
+          <div class="control-group">
+            <button id="btn-phys-heat" class="btn btn-secondary" type="button" disabled>Visualise Diffusion</button>
+          </div>
+
+          <hr class="divider">
+
+          <h3 class="card-title">Reaction-Diffusion</h3>
+          <div class="field-row">
+            <div class="field">
+              <label for="phys-rd-feed">Feed rate</label>
+              <input id="phys-rd-feed" type="number" value="0.055" min="0.01" max="0.1" step="0.005">
+            </div>
+            <div class="field">
+              <label for="phys-rd-kill">Kill rate</label>
+              <input id="phys-rd-kill" type="number" value="0.062" min="0.01" max="0.1" step="0.002">
+            </div>
+          </div>
+          <div class="control-group">
+            <button id="btn-phys-rd" class="btn btn-secondary" type="button">Run Gray-Scott</button>
+          </div>
+        </div>
+
+        <!-- Column 3: Visualizations -->
+        <div class="card viz-card viz-card--spatial">
+          <h3 class="card-title" id="phys-viz-title">Physical System</h3>
+          <div id="phys-main-viz" class="graph-container physics-viz-main" aria-label="Physics graph visualization">
+            <p class="physics-placeholder">Select a scenario and click <strong>Generate System</strong> to begin</p>
+          </div>
+          <div id="phys-predictions-viz" class="physics-predictions" hidden>
+            <h4>Predictions</h4>
+            <div id="phys-pred-container" class="graph-container physics-viz-main"></div>
+          </div>
+
+          <div id="phys-heat-strip" class="interpolation-strip" hidden aria-label="Heat diffusion sequence"></div>
+          <div id="phys-rd-strip" class="interpolation-strip" hidden aria-label="Reaction-diffusion sequence"></div>
+          <div id="phys-accuracy-display" class="physics-accuracy" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Hyperbolic GNN Panel ======== -->
+    <section id="panel-hyperbolic" class="panel" role="tabpanel" aria-labelledby="tab-hyperbolic" hidden>
+      <div class="panel-header">
+        <h2>Hyperbolic GNN</h2>
+        <p class="panel-desc">Explore graph embeddings on the Poincar&eacute; disk &mdash; spring-mass simulation in hyperbolic space, node classification with hyperbolic GNNs, and comparison of Euclidean vs hyperbolic embeddings.</p>
+      </div>
+
+      <div class="panel-grid physics-layout">
+        <!-- Column 1: Graph & Simulation -->
+        <div class="card controls-card">
+          <h3 class="card-title">Hyperbolic Space</h3>
+          <fieldset class="fieldset">
+            <legend>Dataset</legend>
+            <div class="field">
+              <label for="hyp-graph-type">Graph type</label>
+              <select id="hyp-graph-type">
+                <option value="binary_tree">Binary Tree</option>
+                <option value="karate_club">Karate Club</option>
+                <option value="random_hierarchical">Random Hierarchical</option>
+                <option value="grid">Grid</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="hyp-depth">Depth / Nodes</label>
+              <input id="hyp-depth" type="number" value="4" min="2" max="20">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-hyp-graph" class="btn btn-primary" type="button">Generate Graph</button>
+            <span id="hyp-graph-status" class="status-text"></span>
+          </div>
+
+          <hr class="divider">
+
+          <h3 class="card-title">Simulation</h3>
+          <fieldset class="fieldset">
+            <legend>Parameters</legend>
+            <div class="field">
+              <label for="hyp-curvature">Curvature</label>
+              <input id="hyp-curvature" type="number" value="1.0" step="0.1" min="0.1" max="5.0">
+            </div>
+            <div class="field">
+              <label for="hyp-spring-k">Spring strength</label>
+              <input id="hyp-spring-k" type="number" value="2.0" step="0.1">
+            </div>
+            <div class="field">
+              <label for="hyp-target-len">Target length</label>
+              <input id="hyp-target-len" type="number" value="0.3" step="0.05">
+            </div>
+            <div class="field">
+              <label for="hyp-charge">Charge</label>
+              <input id="hyp-charge" type="number" value="0.1" step="0.01">
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-hyp-sim-start" class="btn btn-accent" type="button" disabled>Start Simulation</button>
+            <button id="btn-hyp-sim-stop" class="btn btn-secondary" type="button" disabled>Stop</button>
+            <button id="btn-hyp-sim-reset" class="btn btn-secondary" type="button" disabled>Reset</button>
+          </div>
+          <div class="status-text" style="margin-top: var(--space-sm);">
+            Energy: <span id="hyp-energy-val">&mdash;</span>, Step: <span id="hyp-step-val">0</span>
+          </div>
+        </div>
+
+        <!-- Column 2: Training & Analysis -->
+        <div class="card controls-card">
+          <h3 class="card-title">Training</h3>
+          <fieldset class="fieldset">
+            <legend>Architecture</legend>
+            <div class="field">
+              <label for="hyp-layer-type">Layer type</label>
+              <select id="hyp-layer-type">
+                <option value="gcn">GCN</option>
+                <option value="gat">GAT</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="hyp-hidden-dim">Hidden dim</label>
+                <input id="hyp-hidden-dim" type="number" value="32" min="8" max="128" step="8">
+              </div>
+              <div class="field">
+                <label for="hyp-num-layers">Layers</label>
+                <input id="hyp-num-layers" type="number" value="2" min="1" max="6">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="hyp-epochs">Epochs</label>
+                <input id="hyp-epochs" type="number" value="100" min="10" max="500" step="10">
+              </div>
+              <div class="field">
+                <label for="hyp-lr">Learning rate</label>
+                <input id="hyp-lr" type="number" value="0.01" min="0.001" max="0.1" step="0.001">
+              </div>
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-hyp-train" class="btn btn-accent" type="button" disabled>Train Hyperbolic GNN</button>
+          </div>
+          <div id="hyp-loss-container" class="chart-container chart-container--small"></div>
+          <output id="hyp-status-log" class="status-log" aria-live="polite"></output>
+
+          <hr class="divider">
+
+          <h3 class="card-title">Embedding Comparison</h3>
+          <fieldset class="fieldset">
+            <legend>Comparison</legend>
+            <div class="field-row">
+              <div class="field">
+                <label for="hyp-embed-dim">Embed dim</label>
+                <input id="hyp-embed-dim" type="number" value="2" min="2" max="64">
+              </div>
+              <div class="field">
+                <label for="hyp-comp-epochs">Epochs</label>
+                <input id="hyp-comp-epochs" type="number" value="200" min="50" max="1000" step="50">
+              </div>
+            </div>
+          </fieldset>
+          <div class="control-group">
+            <button id="btn-hyp-compare" class="btn btn-secondary" type="button" disabled>Compare Euclidean vs Hyperbolic</button>
+          </div>
+          <div id="hyp-compare-display" class="metrics-table"></div>
+        </div>
+
+        <!-- Column 3: Poincare Disk Visualization -->
+        <div class="card viz-card viz-card--spatial">
+          <h3 class="card-title" id="hyp-viz-title">Poincar&eacute; Disk</h3>
+          <div id="hyp-disk-viz" class="graph-container hyperbolic-viz-main" aria-label="Poincare disk visualization">
+            <p class="viz-placeholder">Select a graph type and click <em>Generate Graph</em> to begin</p>
+          </div>
+          <div id="hyp-predictions-viz" class="physics-predictions" hidden>
+            <h4>After Training</h4>
+            <div id="hyp-pred-disk" class="graph-container hyperbolic-viz-main"></div>
+          </div>
+          <div id="hyp-compare-viz" hidden>
+            <h4>Embedding Comparison</h4>
+            <div class="hyp-compare-row">
+              <div>
+                <h5>Euclidean</h5>
+                <div id="hyp-euclidean-viz" class="graph-container hyperbolic-viz-half"></div>
+              </div>
+              <div>
+                <h5>Poincar&eacute;</h5>
+                <div id="hyp-poincare-viz" class="graph-container hyperbolic-viz-half"></div>
+              </div>
+            </div>
+          </div>
+          <div id="hyp-accuracy-display" class="physics-accuracy" hidden></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ======== WL Test Panel ======== -->
     <section id="panel-wl" class="panel" role="tabpanel" aria-labelledby="tab-wl" hidden>
       <div class="panel-header">
@@ -575,6 +888,307 @@
           <div id="wl-verdict" class="wl-verdict" hidden></div>
           <div id="wl-iteration-strip" class="wl-iteration-strip" aria-label="WL iteration results"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ======== Guide Panel ======== -->
+    <section id="panel-guide" class="panel" role="tabpanel" aria-labelledby="tab-guide" hidden>
+      <div class="panel-header">
+        <h2>Guide &amp; Instructions</h2>
+        <p class="panel-desc">Complete walkthrough of every feature in the Graph ML Research toolkit. Each section explains what to do, what to expect, and what to observe in the results.</p>
+      </div>
+
+      <div class="guide-layout">
+
+        <!-- ──── GNN Explorer ──── -->
+        <div class="card guide-card" id="guide-gnn">
+          <h3 class="card-title guide-section-title">1 &mdash; GNN Explorer</h3>
+          <p class="guide-subtitle">Node classification on Zachary&rsquo;s Karate Club using GCN or GAT layers, built from scratch.</p>
+
+          <div class="guide-block">
+            <h4>How to use</h4>
+            <ol class="guide-steps">
+              <li><strong>Load the graph.</strong> Click <kbd>Load Karate Club</kbd>. A force-directed graph appears with 34 nodes and 78 edges. Nodes are coloured by ground-truth community (Mr.&nbsp;Hi vs Officer).</li>
+              <li><strong>Configure training.</strong> Choose <em>GCN</em> or <em>GAT</em> as the layer type. Adjust hidden dimension (default 16), layers (default 2), learning rate (0.01), and epochs (200).</li>
+              <li><strong>Train the model.</strong> Click <kbd>Train Model</kbd>. Watch the loss curve descend in real time. When training finishes, test accuracy and F1 score appear in the metrics panel.</li>
+              <li><strong>Predict on nodes.</strong> Enter comma-separated node IDs (e.g. <code>0,16,33</code>) and click <kbd>Predict</kbd>. A table shows each node&rsquo;s predicted class and confidence percentage.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Loss curve:</strong> Should drop steeply in the first 50 epochs, then plateau. GAT typically converges slightly faster than GCN due to attention-weighted aggregation.</li>
+              <li><strong>Accuracy:</strong> Expect 90&ndash;97% test accuracy. The classic split uses nodes 0&ndash;7 as the test set.</li>
+              <li><strong>Graph colouring:</strong> After training, the graph colours update to show predicted classes. Misclassified nodes (typically nodes 2, 8, or 9 near the community boundary) stand out.</li>
+              <li><strong>GAT vs GCN:</strong> GAT learns to weight important neighbours differently &mdash; try both and compare F1 scores. GAT often captures the bridge nodes (e.g. node&nbsp;2) more accurately.</li>
+            </ul>
+          </div>
+
+          <div class="guide-block guide-theory">
+            <h4>Theory</h4>
+            <p>A GCN layer computes H<sup>(l+1)</sup> = &sigma;(&Atilde;H<sup>(l)</sup>W<sup>(l)</sup>) where &Atilde; is the symmetrically normalised adjacency with self-loops. GAT replaces fixed normalisation with learnable attention coefficients &alpha;<sub>ij</sub> = softmax(LeakyReLU(a<sup>T</sup>[Wh<sub>i</sub> || Wh<sub>j</sub>])).</p>
+          </div>
+        </div>
+
+        <!-- ──── Graph Generator ──── -->
+        <div class="card guide-card" id="guide-generator">
+          <h3 class="card-title guide-section-title">2 &mdash; Graph Generator</h3>
+          <p class="guide-subtitle">Conditional graph VAE that generates graphs matching target structural properties.</p>
+
+          <div class="guide-block">
+            <h4>How to use</h4>
+            <ol class="guide-steps">
+              <li><strong>Train the generator.</strong> Set hidden dim (64), learning rate (0.001), and epochs (500). Click <kbd>Train Generator</kbd>. The model learns to reconstruct and generate small graphs conditioned on structural features.</li>
+              <li><strong>Set conditions.</strong> Use the three sliders to specify target properties:
+                <ul>
+                  <li><em>Nodes</em> (5&ndash;20): number of nodes in the generated graph</li>
+                  <li><em>Density</em> (0.05&ndash;0.95): fraction of possible edges present</li>
+                  <li><em>Clustering</em> (0&ndash;1.0): target transitivity coefficient</li>
+                </ul>
+              </li>
+              <li><strong>Generate.</strong> Choose how many samples (1&ndash;24) and click <kbd>Generate Graphs</kbd>. A gallery grid shows each generated graph with its measured statistics.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Condition adherence:</strong> Generated graphs should roughly match the requested node count, density, and clustering. Exact match is unlikely &mdash; the model learns a continuous distribution.</li>
+              <li><strong>Diversity:</strong> With the same conditions, multiple samples should look structurally different while sharing similar statistics. This shows the VAE is sampling from a learned latent space, not memorising.</li>
+              <li><strong>High-density graphs:</strong> Set density above 0.7 to see nearly-complete graphs. Set it below 0.15 to see sparse, tree-like structures.</li>
+              <li><strong>Clustering control:</strong> High clustering + moderate density produces triangle-rich &ldquo;community-like&rdquo; structures. Low clustering + high density produces random-looking dense graphs.</li>
+              <li><strong>Graph cards:</strong> Each card displays <code>n</code> (nodes), <code>e</code> (edges), <code>d</code> (measured density) for quick comparison with your target.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ──── VAE / Diffusion ──── -->
+        <div class="card guide-card" id="guide-vae">
+          <h3 class="card-title guide-section-title">3 &mdash; VAE / Diffusion</h3>
+          <p class="guide-subtitle">Graph variational autoencoder and discrete denoising diffusion for generative modelling.</p>
+
+          <div class="guide-block">
+            <h4>Graph VAE</h4>
+            <ol class="guide-steps">
+              <li><strong>Train.</strong> Configure latent dim (8), hidden dim (32), and click <kbd>Train VAE</kbd>. The VAE encodes graphs into a continuous latent space and decodes via a sigmoid adjacency reconstruction.</li>
+              <li><strong>Generate.</strong> Click <kbd>Generate from VAE</kbd> to sample random graphs from the learned prior N(0,I). A gallery of generated graphs appears.</li>
+              <li><strong>Interpolate.</strong> Set source and target graph indices, choose interpolation steps (3&ndash;12), and click <kbd>Interpolate</kbd>. A strip shows smooth geometric morphing between two training graphs.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>Diffusion Model</h4>
+            <ol class="guide-steps">
+              <li><strong>Train.</strong> Set timesteps (100), hidden dim (64), and click <kbd>Train Diffusion</kbd>. The model learns to denoise progressively corrupted graph structures.</li>
+              <li><strong>Generate.</strong> Click <kbd>Generate from Diffusion</kbd>. The reverse diffusion process iteratively denoises random noise into coherent graph structures.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>VAE loss:</strong> Comprises reconstruction loss + KL divergence. Watch for the KL term initially collapsing near zero (&ldquo;posterior collapse&rdquo;) before rising as the model learns meaningful latent representations.</li>
+              <li><strong>Interpolation strip:</strong> The transition from graph A to graph B should be smooth &mdash; edges gradually appear/disappear and node positions blend linearly. This demonstrates the geometric interpolation with spectral layout matching.</li>
+              <li><strong>VAE vs Diffusion quality:</strong> Diffusion-generated graphs often look more realistic (fewer isolated nodes, better connectivity) but take longer to train. VAE is faster but may produce &ldquo;blurry&rdquo; graphs with ambiguous edge probabilities.</li>
+              <li><strong>Latent space:</strong> The architecture diagram on the right shows the encoder&ndash;latent&ndash;decoder pipeline. Encoder uses 2-layer GCN, decoder uses an MLP on concatenated node pairs to predict edge probability.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ──── Spatial 3D ──── -->
+        <div class="card guide-card" id="guide-spatial">
+          <h3 class="card-title guide-section-title">4 &mdash; Spatial 3D</h3>
+          <p class="guide-subtitle">Autoregressive tree VAE for generating 3D spatial trees and neuron morphologies, plus geometric mesh interpolation.</p>
+
+          <div class="guide-block">
+            <h4>Tree Generation</h4>
+            <ol class="guide-steps">
+              <li><strong>Choose data type.</strong> Select &ldquo;Branching tree&rdquo; for abstract fractal trees or &ldquo;Neuron morphology&rdquo; for biologically-inspired dendritic structures.</li>
+              <li><strong>Generate synthetic data.</strong> Click <kbd>Generate Synthetic</kbd> to create training examples. The gallery shows 3D isometric projections of trees with colour-coded node types.</li>
+              <li><strong>Train the model.</strong> Click <kbd>Train Spatial</kbd>. The VAE or diffusion model learns the joint distribution over tree topology and 3D positions.</li>
+              <li><strong>Generate new trees.</strong> Click <kbd>Generate</kbd> to sample novel trees from the learned distribution.</li>
+              <li><strong>Analyse.</strong> Click <kbd>Analyze</kbd> to compare generated tree statistics against the training distribution.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>Mesh Interpolation</h4>
+            <ol class="guide-steps">
+              <li><strong>View meshes.</strong> Click <kbd>View Meshes</kbd> to load 6 canonical shapes: Cube, Octahedron, Icosahedron, Hexagonal Prism, Star, and Torus.</li>
+              <li><strong>Train mesh VAE.</strong> Click <kbd>Train Mesh VAE</kbd> to learn a latent space over mesh geometry.</li>
+              <li><strong>Generate.</strong> Sample new mesh shapes from the VAE prior.</li>
+              <li><strong>Interpolate.</strong> Select two shapes (e.g. Cube&rarr;Icosahedron) and click <kbd>Interpolate</kbd>. A strip shows the mesh smoothly morphing between the two shapes.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Isometric projection:</strong> Trees are rendered with x, y, z axis indicators in the corner. Rotate mentally using these references &mdash; the projection uses cos(30&deg;)/sin(30&deg;) mapping.</li>
+              <li><strong>Node types:</strong> Large nodes = soma (root), medium = branch points (2+ children), small = tips (terminal). Colour intensity indicates depth from root.</li>
+              <li><strong>Morphological stats:</strong> Each tree card shows <code>n</code> (nodes), <code>e</code> (edges), <code>br</code> (branch points), <code>tips</code> (terminal tips), <code>S</code> (Strahler order &mdash; a measure of branching complexity borrowed from hydrology).</li>
+              <li><strong>Mesh interpolation strip:</strong> Labelled t=0 to t=1. Watch how node positions blend linearly while edge topology transitions &mdash; edges from the source shape fade out while edges from the target shape fade in.</li>
+              <li><strong>Neuron morphologies:</strong> Should show characteristic dendritic branching patterns with 3&ndash;6 primary branches splitting into finer arborisations. The Strahler order should be 2&ndash;4 for realistic neurons.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ──── Physics GNN ──── -->
+        <div class="card guide-card" id="guide-physics">
+          <h3 class="card-title guide-section-title">5 &mdash; Physics GNN</h3>
+          <p class="guide-subtitle">Physics-informed graph neural networks with discrete differential geometry: cotangent Laplacians, reaction-diffusion dynamics, curvature attention, and energy regularisation.</p>
+
+          <div class="guide-block">
+            <h4>Getting started</h4>
+            <ol class="guide-steps">
+              <li><strong>Choose a scenario.</strong> Select one of four physical systems:
+                <ul>
+                  <li><em>Heat Diffusion on Lattice:</em> 7&times;7 grid graph. Nodes are labelled Cold/Warm/Hot based on distance from a heat source. Tests whether the GNN learns smooth temperature fields.</li>
+                  <li><em>Curvature Classification:</em> Random 3D point cloud. Nodes are labelled Flat/Curved/Sharp based on local discrete curvatures. Tests geometric feature extraction.</li>
+                  <li><em>Elastic Stress Analysis:</em> Lattice graph under simulated elastic deformation. Nodes labelled Low/Medium/High stress. Tests physics-aware message passing.</li>
+                  <li><em>Molecular Structure:</em> Random 3D molecular graph with bond lengths. Nodes labelled by local curvature. Tests the model on non-grid geometry.</li>
+                </ul>
+              </li>
+              <li><strong>Generate the system.</strong> Click <kbd>Generate System</kbd>. The graph appears in the visualisation panel with colour-coded labels and a legend.</li>
+              <li><strong>Configure physics components.</strong> Toggle the five checkboxes to enable/disable:
+                <ul>
+                  <li><em>Curvature features:</em> Appends 6 discrete curvatures (mean, Gaussian, &kappa;<sub>1</sub>, &kappa;<sub>2</sub>, shape index, curvedness) as node features.</li>
+                  <li><em>Multi-scale diffusion:</em> CotangentConv layers using geometric edge weights from vertex positions.</li>
+                  <li><em>Reaction-diffusion:</em> ReactionDiffusionLayer implementing Gray-Scott dynamics within the GNN.</li>
+                  <li><em>Curvature attention:</em> CurvatureAttention that biases message passing based on local curvature similarity.</li>
+                  <li><em>Energy regularisation:</em> Adds Dirichlet energy + total variation + elastic energy as learnable regularisation terms to the loss.</li>
+                </ul>
+              </li>
+              <li><strong>Train.</strong> Click <kbd>Train Physics GNN</kbd>. Watch the loss curve descend. When done, the prediction graph appears alongside accuracy metrics.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>Analysis tools</h4>
+            <ol class="guide-steps">
+              <li><strong>Ablation Study.</strong> Click <kbd>Run Ablation Study</kbd>. Trains 7 model variants, systematically disabling each physics component. Results appear in a table showing accuracy and parameter count for each configuration. Expect the &ldquo;Full model&rdquo; row to score highest.</li>
+              <li><strong>Compute Energy.</strong> Click <kbd>Compute Energy</kbd>. Shows three energy functionals evaluated on the current graph signal:
+                <ul>
+                  <li><em>Dirichlet energy:</em> Measures signal smoothness. Low = smooth, high = oscillating.</li>
+                  <li><em>Total variation:</em> Edge-preserving measure. Highlights sharp transitions.</li>
+                  <li><em>Elastic energy:</em> Shape rigidity. High = large deformations from rest.</li>
+                </ul>
+              </li>
+              <li><strong>Analyse Curvature.</strong> Click <kbd>Analyse Curvature</kbd>. Displays min/max/mean for all 6 discrete curvature types. Flat regions have near-zero curvature; corners of a lattice have high values.</li>
+              <li><strong>Heat Diffusion.</strong> Set a source node index and click <kbd>Visualise Diffusion</kbd>. A 6-frame strip appears showing heat spreading from the source over time (blue&rarr;orange&rarr;red). The diffusion uses the cotangent Laplacian heat kernel exp(-tL).</li>
+              <li><strong>Reaction-Diffusion.</strong> Set feed rate (default 0.055) and kill rate (0.062), then click <kbd>Run Gray-Scott</kbd>. A 6-frame strip shows Turing pattern emergence: initially uniform concentrations evolve into spots, stripes, or labyrinthine structures depending on the feed/kill ratio.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Accuracy:</strong> With all components enabled, expect 90&ndash;97% on heat diffusion, 85&ndash;92% on curvature, 80&ndash;90% on stress. Molecular is hardest (75&ndash;88%).</li>
+              <li><strong>Ablation impact:</strong> Removing curvature features typically causes the largest accuracy drop (~5&ndash;10%). Removing energy regularisation causes the smallest drop but increases overfitting on longer training runs.</li>
+              <li><strong>Heat diffusion strip:</strong> Heat should spread concentrically from the source node. On a grid lattice, the pattern forms a diamond shape (L1 norm wavefront). On molecular graphs, it follows bond topology.</li>
+              <li><strong>Gray-Scott patterns:</strong> With default parameters (f=0.055, k=0.062), you get spot-like Turing patterns. Try f=0.04, k=0.06 for stripes, or f=0.025, k=0.06 for labyrinthine patterns.</li>
+              <li><strong>Graph colouring:</strong> The initial graph uses a 3-class colour scheme: blue (Cold/Flat/Low), orange (Warm/Curved/Medium), red (Hot/Sharp/High). After training, the prediction graph uses the same scheme for comparison.</li>
+              <li><strong>Molecular graph:</strong> Renders as a 3D isometric molecular structure. Bond lengths create non-uniform edge weights in the cotangent Laplacian, which the model leverages for classification.</li>
+            </ul>
+          </div>
+
+          <div class="guide-block guide-theory">
+            <h4>Theory</h4>
+            <p>The cotangent Laplacian L<sub>ij</sub> = &minus;w<sub>ij</sub> (off-diagonal), L<sub>ii</sub> = &Sigma;<sub>j</sub> w<sub>ij</sub> uses geometric edge weights from vertex positions. The Gray-Scott reaction-diffusion system dA/dt = D<sub>a</sub>&nabla;&sup2;A &minus; AB&sup2; + f(1&minus;A) produces Turing instabilities when the activator diffuses slower than the inhibitor (D<sub>a</sub> &lt; D<sub>b</sub>).</p>
+          </div>
+        </div>
+
+        <!-- ──── Hyperbolic GNN ──── -->
+        <div class="card guide-card" id="guide-hyperbolic">
+          <h3 class="card-title guide-section-title">6 &mdash; Hyperbolic GNN</h3>
+          <p class="guide-subtitle">Graph neural networks in hyperbolic space &mdash; embedding hierarchical structures in the Poincar&eacute; ball with Riemannian optimization.</p>
+
+          <div class="guide-block">
+            <h4>How to use</h4>
+            <ol class="guide-steps">
+              <li><strong>Generate a graph.</strong> Choose a graph type &mdash; Binary Tree works best for demonstrating hyperbolic advantages. Click <kbd>Generate Graph</kbd>. The graph appears in the Poincar&eacute; disk with the root near the centre and leaves near the boundary.</li>
+              <li><strong>Run the simulation.</strong> Adjust curvature (1.0 default), spring strength, and charge parameters. Click <kbd>Start Simulation</kbd>. Watch nodes rearrange themselves under spring-mass forces on the curved manifold. The energy readout should decrease over time.</li>
+              <li><strong>Train the GNN.</strong> Configure hidden dim, layers, and click <kbd>Train Hyperbolic GNN</kbd>. The model performs message passing in hyperbolic space using logmap/expmap operations. Watch the loss curve and accuracy metrics.</li>
+              <li><strong>Compare embeddings.</strong> Click <kbd>Compare Euclidean vs Hyperbolic</kbd>. Two side-by-side visualizations show the same graph embedded in flat space vs curved space. The distortion table shows how much the embeddings distort the original graph distances.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Tree structure:</strong> Binary trees embed perfectly in hyperbolic space (zero distortion) because hyperbolic space grows exponentially &mdash; matching the exponential growth of tree branches. Euclidean embeddings must distort such structures.</li>
+              <li><strong>Boundary effect:</strong> Nodes near the Poincar&eacute; disk boundary are actually very far apart in the hyperbolic metric, even though they appear close visually. The dashed boundary circle represents infinity.</li>
+              <li><strong>Geodesic arcs:</strong> Edges appear as circular arcs, not straight lines. These arcs are always orthogonal to the boundary circle &mdash; the shortest paths in hyperbolic geometry.</li>
+              <li><strong>Simulation energy:</strong> Should decrease monotonically. Nodes spread out to minimize spring energy while respecting the hyperbolic metric. The final layout reveals the hierarchical structure.</li>
+              <li><strong>Distortion comparison:</strong> For trees, expect hyperbolic distortion near 0 and Euclidean distortion &gt; 0.5. For grid graphs, both distortions will be similar since grids don't have hierarchical structure.</li>
+              <li><strong>Curvature parameter:</strong> Higher curvature compresses the disk &mdash; nodes pack tighter near the boundary. Lower curvature makes the space more Euclidean-like. Try c=0.5 vs c=2.0 to see the difference.</li>
+            </ul>
+          </div>
+
+          <div class="guide-block guide-theory">
+            <h4>Theory</h4>
+            <p>The Poincar&eacute; ball model represents n-dimensional hyperbolic space inside the unit ball. The metric tensor g<sub>x</sub> = (2/(1&minus;||x||&sup2;))&sup2; &middot; I makes distances grow exponentially near the boundary. Message passing uses logmap to project neighbours into the tangent space at each node, aggregates in flat tangent space, then maps back via expmap. RiemannianAdam adapts gradient descent to the manifold by rescaling gradients with the inverse metric tensor.</p>
+          </div>
+        </div>
+
+        <!-- ──── WL Test ──── -->
+        <div class="card guide-card" id="guide-wl">
+          <h3 class="card-title guide-section-title">7 &mdash; WL Test</h3>
+          <p class="guide-subtitle">Interactive 1-Weisfeiler-Leman colour refinement test for graph isomorphism and GNN expressivity.</p>
+
+          <div class="guide-block">
+            <h4>How to use</h4>
+            <ol class="guide-steps">
+              <li><strong>Select a graph pair.</strong> Choose from three examples:
+                <ul>
+                  <li><em>Star K<sub>1,5</sub> vs Path P<sub>6</sub>:</em> Easily distinguished &mdash; WL separates them in iteration 1 because the star has a node with degree 5.</li>
+                  <li><em>C<sub>6</sub>+short chord vs C<sub>6</sub>+long chord:</em> Two 6-cycles with chords placed differently. WL distinguishes them after 2&ndash;3 iterations because the neighbour multisets eventually diverge.</li>
+                  <li><em>C<sub>6</sub> vs C<sub>3</sub>&cup;C<sub>3</sub>:</em> A single 6-cycle versus two disjoint 3-cycles. Easily distinguished &mdash; degree distributions are identical (all degree 2) but WL finds the difference in 2 iterations via 2-hop neighbourhood structure.</li>
+                </ul>
+              </li>
+              <li><strong>Set iterations</strong> (1&ndash;10). More iterations = finer colour refinement.</li>
+              <li><strong>Run.</strong> Click <kbd>Run WL Test</kbd>. An interactive stepper appears with two graph panels and colour histograms.</li>
+              <li><strong>Step through.</strong> Use the Previous/Next buttons, slider, or play button to animate through each WL iteration.</li>
+            </ol>
+          </div>
+
+          <div class="guide-block">
+            <h4>What to observe</h4>
+            <ul class="guide-observations">
+              <li><strong>Node colours:</strong> Each iteration assigns new colours. Initially, nodes with the same degree share a colour. As iterations progress, colours split based on increasingly fine neighbourhood structure.</li>
+              <li><strong>Histogram bars:</strong> Below each graph pair, a histogram compares colour distributions. When the histograms diverge, a green &ldquo;Graphs distinguished!&rdquo; badge appears.</li>
+              <li><strong>Convergence:</strong> After enough iterations, the colour partition stabilises (no more splits). At this point, additional iterations have no effect &mdash; the WL test has reached its maximum discriminative power.</li>
+              <li><strong>GNN connection:</strong> The number of WL iterations needed to distinguish two graphs equals the minimum GNN depth required. This is a direct consequence of the Xu et al. (2019) theorem: standard message-passing GNNs are at most as powerful as 1-WL.</li>
+              <li><strong>Colour count:</strong> The info panel shows how many distinct colours each graph has. When the graphs have different colour counts, they are provably non-isomorphic.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ──── General Tips ──── -->
+        <div class="card guide-card" id="guide-tips">
+          <h3 class="card-title guide-section-title">General Tips</h3>
+
+          <div class="guide-block">
+            <h4>Workflow</h4>
+            <ul class="guide-observations">
+              <li><strong>Sequential dependency:</strong> Most tabs require generating data before training, and training before predicting. Buttons that require a prior step are disabled until that step is complete.</li>
+              <li><strong>Training times:</strong> GNN and Generator train in seconds. VAE and Spatial models take 10&ndash;30 seconds. Physics ablation studies train 7 models sequentially and take 1&ndash;2 minutes.</li>
+              <li><strong>In-memory state:</strong> All models and data are held in server memory. Refreshing the page resets the state and you need to regenerate/retrain.</li>
+              <li><strong>Loss curves:</strong> Every training panel shows a real-time loss curve. A healthy curve drops steeply early and plateaus. If the curve oscillates wildly, reduce the learning rate.</li>
+            </ul>
+          </div>
+
+          <div class="guide-block">
+            <h4>Implementation details</h4>
+            <ul class="guide-observations">
+              <li><strong>All from scratch:</strong> Every model (GCN, GAT, VAE, Diffusion, Spatial Tree VAE, Physics GNN, WL) is implemented from scratch in PyTorch &mdash; no PyTorch Geometric, DGL, or other graph libraries.</li>
+              <li><strong>Visualisation:</strong> All graphs are rendered with D3.js. Force-directed layouts use D3 force simulation; spatial/physics graphs use isometric projection; mesh interpolation uses spectral positioning.</li>
+              <li><strong>Backend:</strong> FastAPI serves the REST API. Each tab has its own route module. Models run on CPU for portability.</li>
+            </ul>
+          </div>
+        </div>
+
       </div>
     </section>
   </main>

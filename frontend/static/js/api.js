@@ -52,4 +52,24 @@ export const api = {
   // WL Test
   loadWLExamples: () => request('/wl/examples'),
   runWLTest: (params) => request('/wl/test', { method: 'POST', body: params }),
+
+  // Physics-Informed GNN
+  physicsDataset: (params) => request('/physics/dataset', { method: 'POST', body: params }),
+  physicsTrain: (params) => request('/physics/train', { method: 'POST', body: params }),
+  physicsPredict: () => request('/physics/predict', { method: 'POST' }),
+  physicsAblation: (params) => request('/physics/ablation', { method: 'POST', body: params }),
+  physicsEnergy: () => request('/physics/energy', { method: 'POST' }),
+  physicsCurvatures: () => request('/physics/curvatures', { method: 'POST' }),
+  physicsHeatDiffusion: (params) => request('/physics/heat_diffusion', { method: 'POST', body: params }),
+  physicsGenerate: (params) => request('/physics/generate', { method: 'POST', body: params }),
+  physicsRDPattern: (params) => request('/physics/rd_pattern', { method: 'POST', body: params }),
+
+  // Hyperbolic GNN
+  hyperbolicGraph: (params) => request('/hyperbolic/graph', { method: 'POST', body: params }),
+  hyperbolicSimInit: (params) => request('/hyperbolic/simulate/init', { method: 'POST', body: params }),
+  hyperbolicSimStep: (params) => request('/hyperbolic/simulate/step', { method: 'POST', body: params }),
+  hyperbolicSimReset: () => request('/hyperbolic/simulate/reset', { method: 'POST' }),
+  hyperbolicTrain: (params) => request('/hyperbolic/train', { method: 'POST', body: params }),
+  hyperbolicCompare: (params) => request('/hyperbolic/compare', { method: 'POST', body: params }),
+  hyperbolicGeodesics: (params) => request('/hyperbolic/geodesics', { method: 'POST', body: params }),
 };

@@ -1258,6 +1258,137 @@ footer {
   }
 }
 
+/* --- Physics GNN Section --- */
+.physics-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.physics-viz-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.physics-demo-graphs {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.physics-graph-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.physics-graph-panel h4 {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.physics-graph-viz {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.physics-graph-viz svg {
+  width: 100%;
+  height: 100%;
+}
+
+.physics-edge {
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+  stroke-opacity: 0.5;
+}
+
+.physics-node {
+  transition: fill 0.3s ease;
+}
+
+@media (max-width: 900px) {
+  .physics-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .physics-demo-graphs {
+    flex-direction: column;
+  }
+}
+
+/* --- Hyperbolic GNN Section --- */
+.hyperbolic-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.hyperbolic-viz-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.hyperbolic-demo-disk {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hyperbolic-demo-disk svg {
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+}
+
+.hyperbolic-boundary {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 0.02;
+  stroke-dasharray: 0.04 0.02;
+}
+
+.hyperbolic-grid-circle {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 0.008;
+  stroke-dasharray: 0.02 0.015;
+  opacity: 0.5;
+}
+
+.hyperbolic-edge {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 0.02;
+  stroke-linecap: round;
+}
+
+.hyperbolic-node {
+  stroke: #fff;
+  stroke-width: 0.02;
+  transition: fill 0.3s ease;
+}
+
+@media (max-width: 900px) {
+  .hyperbolic-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* --- WL Test Section --- */
 .wl-layout {
   display: grid;
@@ -1587,3 +1718,88 @@ footer {
 .mt-4 { margin-top: 2rem; }
 .mb-2 { margin-bottom: 1rem; }
 .mb-3 { margin-bottom: 1.5rem; }
+
+/* ── Guide Section ────────────────────────────────────────── */
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.guide-card-demo {
+  padding: 1.5rem;
+}
+
+.guide-card-demo h3 {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.guide-card-demo > p {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.guide-card-demo h4 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent);
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.guide-card-demo ol {
+  padding-left: 1.5rem;
+  margin: 0;
+}
+
+.guide-card-demo ol li {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  margin-bottom: 0.35rem;
+}
+
+.guide-card-demo ol li em {
+  color: var(--color-text);
+}
+
+.guide-card-demo ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-card-demo ul li {
+  position: relative;
+  padding-left: 1rem;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  margin-bottom: 0.35rem;
+}
+
+.guide-card-demo ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+@media (max-width: 800px) {
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
+}

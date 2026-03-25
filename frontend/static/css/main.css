@@ -1240,3 +1240,362 @@ input[type="range"]::-moz-range-thumb {
   line-height: 1.4;
   margin: 0;
 }
+
+/* ========================================================================
+   Physics GNN Panel
+   ======================================================================== */
+
+.physics-layout {
+  grid-template-columns: 280px 280px 1fr;
+}
+
+.physics-viz-main {
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.physics-placeholder {
+  color: #8b8fa3;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.physics-viz-main svg {
+  max-width: 100%;
+  max-height: 400px;
+}
+
+.physics-edge {
+  stroke: #475569;
+  stroke-width: 0.8;
+  stroke-opacity: 0.45;
+}
+
+.physics-predictions {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-md);
+}
+
+.physics-predictions h4 {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.physics-accuracy {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.physics-acc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.physics-acc-row strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+.metric-header {
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.metric-best {
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: var(--radius-sm);
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+#phys-heat-strip,
+#phys-rd-strip {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+}
+
+/* ── Guide Panel ─────────────────────────────────────────── */
+.guide-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 900px;
+}
+
+.guide-card {
+  padding: var(--space-lg);
+}
+
+.guide-section-title {
+  font-size: 1rem !important;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.03em;
+}
+
+.guide-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-md);
+  line-height: 1.5;
+}
+
+.guide-block {
+  margin-bottom: var(--space-md);
+}
+
+.guide-block:last-child {
+  margin-bottom: 0;
+}
+
+.guide-block h4 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-sm);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.guide-steps {
+  list-style: none;
+  counter-reset: guide-step;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-steps > li {
+  counter-increment: guide-step;
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.guide-steps > li::before {
+  content: counter(guide-step);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.guide-steps > li strong {
+  color: var(--text-primary);
+}
+
+.guide-steps > li ul {
+  margin: 0.4rem 0 0 0;
+  padding-left: 1.2rem;
+}
+
+.guide-steps > li ul li {
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+}
+
+.guide-observations {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-observations > li {
+  position: relative;
+  padding-left: 1.2rem;
+  margin-bottom: 0.65rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.guide-observations > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+}
+
+.guide-observations > li strong {
+  color: var(--text-primary);
+}
+
+.guide-theory {
+  background: var(--bg-hover);
+  border-radius: 8px;
+  padding: var(--space-md);
+  border-left: 3px solid var(--accent-dim);
+}
+
+.guide-theory p {
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.guide-theory h4 {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.1em 0.45em;
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+}
+
+/* ── Hyperbolic GNN ──────────────────────────────────────── */
+.hyperbolic-viz-main {
+  min-height: 400px;
+  aspect-ratio: 1;
+  max-width: 500px;
+}
+
+.hyperbolic-viz-half {
+  min-height: 250px;
+  aspect-ratio: 1;
+  max-width: 300px;
+}
+
+.hyp-compare-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.hyp-compare-row > div {
+  flex: 1;
+}
+
+.hyp-compare-row h5 {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  text-align: center;
+}
+
+.hyp-boundary {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 0.005;
+  stroke-dasharray: 0.02 0.01;
+}
+
+.hyp-distance-circle {
+  fill: none;
+  stroke: var(--border-subtle);
+  stroke-width: 0.002;
+}
+
+.hyp-geodesic {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 0.004;
+  opacity: 0.5;
+}
+
+.hyp-edge {
+  stroke: var(--text-muted);
+  stroke-width: 0.003;
+  opacity: 0.4;
+}
+
+.hyp-node {
+  stroke: var(--bg-base);
+  stroke-width: 0.004;
+}
+
+#hyp-compare-display table {
+  width: 100%;
+  font-size: 0.82rem;
+  border-collapse: collapse;
+  margin-top: var(--space-sm);
+}
+
+#hyp-compare-display th,
+#hyp-compare-display td {
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+#hyp-compare-display th {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.viz-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 4rem 1rem;
+  font-size: 0.85rem;
+}

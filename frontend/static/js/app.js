@@ -710,6 +710,405 @@ function renderSpatialMesh(container, graphData) {
 
 
 // ---------------------------------------------------------------------------
+// Physics GNN Panel
+// ---------------------------------------------------------------------------
+
+let physicsDataLoaded = false;
+let physicsGraphData = null;
+
+function renderPhysicsGraph(containerId, graphData, colorField = 'labels') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+
+  const positions = graphData.positions;
+  const edges = graphData.edges;
+  const n = positions.length;
+  if (n === 0) return;
+
+  const size = Math.min(el.clientWidth || 500, el.clientHeight || 400, 500);
+  const pad = 35;
+
+  const cos30 = Math.cos(Math.PI / 6);
+  const sin30 = Math.sin(Math.PI / 6);
+  const projected = positions.map(([x, y, z]) => ({
+    px: (x - z) * cos30,
+    py: -y + (x + z) * sin30 * 0.5,
+  }));
+
+  const xs = projected.map(p => p.px);
+  const ys = projected.map(p => p.py);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = (size - 2 * pad) / Math.max(rangeX, rangeY);
+  const cx = size / 2, cy = size / 2;
+  const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+
+  function toScreen(p) {
+    return { x: cx + (p.px - midX) * scale, y: cy + (p.py - midY) * scale };
+  }
+
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Edges
+  const edgeGroup = svg.append('g');
+  if (edges) {
+    edges.forEach(([s, t]) => {
+      const ps = toScreen(projected[s]), pt = toScreen(projected[t]);
+      edgeGroup.append('line')
+        .attr('class', 'physics-edge')
+        .attr('x1', ps.x).attr('y1', ps.y)
+        .attr('x2', pt.x).attr('y2', pt.y);
+    });
+  }
+
+  // Color palette
+  const classColors = ['#3b82f6', '#f59e0b', '#ef4444'];
+  const heatmap = (v) => {
+    const r = Math.round(255 * Math.min(1, v * 2));
+    const b = Math.round(255 * Math.min(1, (1 - v) * 2));
+    const g = Math.round(255 * Math.max(0, 1 - Math.abs(v - 0.5) * 4));
+    return `rgb(${r},${g},${b})`;
+  };
+
+  // Nodes
+  const nodeGroup = svg.append('g');
+  const colorValues = graphData[colorField] || graphData.labels || [];
+  const isDiscrete = colorField === 'labels' || colorField === 'predictions';
+
+  for (let i = 0; i < n; i++) {
+    const sc = toScreen(projected[i]);
+    let fill;
+    if (isDiscrete && colorValues[i] !== undefined) {
+      fill = classColors[colorValues[i] % classColors.length];
+    } else if (colorValues[i] !== undefined) {
+      const vals = colorValues;
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const norm = mx > mn ? (vals[i] - mn) / (mx - mn) : 0.5;
+      fill = heatmap(norm);
+    } else {
+      fill = '#6366f1';
+    }
+
+    nodeGroup.append('circle')
+      .attr('cx', sc.x).attr('cy', sc.y)
+      .attr('r', 3.5)
+      .attr('fill', fill)
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 0.8);
+  }
+
+  // Legend
+  if (isDiscrete && colorValues.length > 0) {
+    const legendLabels = colorField === 'labels'
+      ? ['Cold / Flat / Low', 'Warm / Curved / Mid', 'Hot / Sharp / High']
+      : ['Predicted 0', 'Predicted 1', 'Predicted 2'];
+    const legendG = svg.append('g').attr('transform', `translate(${pad}, ${size - 20})`);
+    legendLabels.forEach((lbl, i) => {
+      legendG.append('circle').attr('cx', i * 100).attr('cy', 0).attr('r', 4).attr('fill', classColors[i]);
+      legendG.append('text').attr('x', i * 100 + 8).attr('y', 4)
+        .attr('fill', '#94a3b8').attr('font-size', '9px').text(lbl);
+    });
+  }
+}
+
+function renderHeatmapGraph(container, graphData, values, title) {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!el) return;
+  el.innerHTML = '';
+
+  const positions = graphData.positions;
+  const edges = graphData.edges;
+  const n = positions.length;
+  if (n === 0) return;
+
+  const size = 220;
+  const pad = 25;
+
+  const cos30 = Math.cos(Math.PI / 6);
+  const sin30 = Math.sin(Math.PI / 6);
+  const projected = positions.map(([x, y, z]) => ({
+    px: (x - z) * cos30,
+    py: -y + (x + z) * sin30 * 0.5,
+  }));
+
+  const xs = projected.map(p => p.px);
+  const ys = projected.map(p => p.py);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scl = (size - 2 * pad) / Math.max(maxX - minX || 1, maxY - minY || 1);
+  const cx = size / 2, cy = size / 2;
+  const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+  const toS = p => ({ x: cx + (p.px - midX) * scl, y: cy + (p.py - midY) * scl });
+
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', `0 0 ${size} ${size + 20}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Title
+  svg.append('text').attr('x', size / 2).attr('y', 14).attr('text-anchor', 'middle')
+    .attr('fill', '#94a3b8').attr('font-size', '10px').text(title || '');
+
+  const g = svg.append('g').attr('transform', 'translate(0, 16)');
+
+  if (edges) {
+    edges.forEach(([s, t]) => {
+      const ps = toS(projected[s]), pt = toS(projected[t]);
+      g.append('line').attr('x1', ps.x).attr('y1', ps.y).attr('x2', pt.x).attr('y2', pt.y)
+        .attr('stroke', '#334155').attr('stroke-width', 0.6).attr('stroke-opacity', 0.4);
+    });
+  }
+
+  const mn = Math.min(...values), mx = Math.max(...values);
+  for (let i = 0; i < n; i++) {
+    const sc = toS(projected[i]);
+    const norm = mx > mn ? (values[i] - mn) / (mx - mn) : 0.5;
+    const r = Math.round(255 * Math.min(1, norm * 2));
+    const b = Math.round(255 * Math.min(1, (1 - norm) * 2));
+    const green = Math.round(200 * Math.max(0, 1 - Math.abs(norm - 0.5) * 3));
+    g.append('circle').attr('cx', sc.x).attr('cy', sc.y).attr('r', 3)
+      .attr('fill', `rgb(${r},${green},${b})`).attr('stroke', '#1e293b').attr('stroke-width', 0.6);
+  }
+}
+
+// Dataset generation
+document.getElementById('btn-phys-dataset')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const params = {
+      scenario: document.getElementById('phys-scenario').value,
+      num_nodes: +document.getElementById('phys-num-nodes').value,
+      grid_size: +document.getElementById('phys-grid-size').value,
+    };
+    const result = await api.physicsDataset(params);
+    physicsGraphData = result.graph;
+    physicsDataLoaded = true;
+
+    renderPhysicsGraph('phys-main-viz', result.graph, 'labels');
+    document.getElementById('phys-viz-title').textContent = result.graph.name || 'Physical System';
+    document.getElementById('phys-dataset-status').textContent = `${result.graph.num_nodes} nodes, ${result.graph.num_edges} edges`;
+    document.getElementById('phys-dataset-status').className = 'status-text success';
+
+    // Enable buttons
+    document.getElementById('btn-phys-train').disabled = false;
+    document.getElementById('btn-phys-ablation').disabled = false;
+    document.getElementById('btn-phys-energy').disabled = false;
+    document.getElementById('btn-phys-curvature').disabled = false;
+    document.getElementById('btn-phys-heat').disabled = false;
+
+    // Hide prediction panels
+    document.getElementById('phys-predictions-viz').hidden = true;
+    document.getElementById('phys-heat-strip').hidden = true;
+    document.getElementById('phys-rd-strip').hidden = true;
+    document.getElementById('phys-accuracy-display').hidden = true;
+
+    log('phys-status-log', `Loaded ${params.scenario}: ${result.graph.num_nodes} nodes`);
+  } catch (e) {
+    log('phys-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Training
+document.getElementById('btn-phys-train')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  document.getElementById('phys-status-log').textContent = '';
+  log('phys-status-log', 'Training Physics-Informed GNN...');
+
+  try {
+    const params = {
+      hidden_dim: +document.getElementById('phys-hidden-dim').value,
+      num_layers: +document.getElementById('phys-num-layers').value,
+      epochs: +document.getElementById('phys-epochs').value,
+      lr: +document.getElementById('phys-lr').value,
+      use_curvature: document.getElementById('phys-use-curvature').checked,
+      use_diffusion: document.getElementById('phys-use-diffusion').checked,
+      use_reaction_diffusion: document.getElementById('phys-use-rd').checked,
+      use_attention: document.getElementById('phys-use-attention').checked,
+      regularise: document.getElementById('phys-use-reg').checked,
+    };
+
+    const result = await api.physicsTrain(params);
+
+    log('phys-status-log', `Done — train acc: ${result.train_accuracy} | val acc: ${result.val_accuracy} | params: ${result.num_params.toLocaleString()} | ${result.train_time}s`);
+
+    // Loss curve
+    const container = document.getElementById('phys-loss-container');
+    container.innerHTML = '<canvas width="240" height="120"></canvas>';
+    drawLossCurve(container.querySelector('canvas'), result.train_losses);
+
+    // Show predictions
+    if (physicsGraphData && result.predictions) {
+      const predData = { ...physicsGraphData, predictions: result.predictions };
+      document.getElementById('phys-predictions-viz').hidden = false;
+      renderPhysicsGraph('phys-pred-container', predData, 'predictions');
+
+      const accDisplay = document.getElementById('phys-accuracy-display');
+      accDisplay.hidden = false;
+      accDisplay.innerHTML = `
+        <div class="physics-acc-row"><span>Train accuracy</span><strong>${(result.train_accuracy * 100).toFixed(1)}%</strong></div>
+        <div class="physics-acc-row"><span>Val accuracy</span><strong>${(result.val_accuracy * 100).toFixed(1)}%</strong></div>
+        <div class="physics-acc-row"><span>Parameters</span><strong>${result.num_params.toLocaleString()}</strong></div>
+        <div class="physics-acc-row"><span>Best epoch</span><strong>${result.best_epoch}</strong></div>
+      `;
+    }
+  } catch (e) {
+    log('phys-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Ablation
+document.getElementById('btn-phys-ablation')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  log('phys-status-log', 'Running ablation study (7 configurations)...');
+
+  try {
+    const result = await api.physicsAblation({
+      epochs: +document.getElementById('phys-epochs').value,
+    });
+
+    const table = document.getElementById('phys-ablation-table');
+    table.innerHTML = '';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'metric-row metric-header';
+    header.innerHTML = '<span class="metric-name">Configuration</span><span class="metric-value">Accuracy</span><span class="metric-value">Params</span>';
+    table.appendChild(header);
+
+    // Find best accuracy for highlighting
+    const bestAcc = Math.max(...result.results.map(r => r.accuracy));
+
+    result.results.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'metric-row' + (r.accuracy === bestAcc ? ' metric-best' : '');
+      row.innerHTML = `<span class="metric-name">${r.name}</span><span class="metric-value">${(r.accuracy * 100).toFixed(1)}%</span><span class="metric-value">${r.num_params}</span>`;
+      table.appendChild(row);
+    });
+
+    log('phys-status-log', 'Ablation complete');
+  } catch (e) {
+    log('phys-status-log', `Ablation error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Energy analysis
+document.getElementById('btn-phys-energy')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const result = await api.physicsEnergy();
+    const display = document.getElementById('phys-energy-display');
+    display.innerHTML = '';
+    for (const [key, val] of Object.entries(result)) {
+      display.innerHTML += `<div class="metric-row"><span class="metric-name">${key.replace(/_/g, ' ')}</span><span class="metric-value">${val}</span></div>`;
+    }
+    log('phys-status-log', `Energy: Dirichlet=${result.dirichlet} TV=${result.total_variation} Elastic=${result.elastic}`);
+  } catch (e) {
+    log('phys-status-log', `Energy error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Curvature analysis
+document.getElementById('btn-phys-curvature')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const result = await api.physicsCurvatures();
+    const display = document.getElementById('phys-curvature-display');
+    display.innerHTML = '';
+    for (const [key, data] of Object.entries(result)) {
+      display.innerHTML += `<div class="metric-row"><span class="metric-name">${key.replace(/_/g, ' ')}</span><span class="metric-value">[${data.min}, ${data.max}] &mu;=${data.mean}</span></div>`;
+    }
+
+    // Visualise curvedness on the graph
+    if (physicsGraphData && result.curvedness) {
+      const curvData = { ...physicsGraphData, values: result.curvedness.values };
+      renderPhysicsGraph('phys-main-viz', curvData, 'values');
+      document.getElementById('phys-viz-title').textContent = 'Curvedness Heatmap';
+    }
+
+    log('phys-status-log', 'Curvature analysis complete');
+  } catch (e) {
+    log('phys-status-log', `Curvature error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Heat diffusion visualization
+document.getElementById('btn-phys-heat')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const source = +document.getElementById('phys-heat-source').value;
+    const result = await api.physicsHeatDiffusion({ source_nodes: [source], num_steps: 6, t_max: 5.0 });
+
+    const strip = document.getElementById('phys-heat-strip');
+    strip.hidden = false;
+    strip.innerHTML = '';
+
+    result.steps.forEach((step, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'interp-step spatial-cell';
+      cell.style.minWidth = '160px';
+      cell.style.minHeight = '180px';
+      strip.appendChild(cell);
+      renderHeatmapGraph(cell, physicsGraphData, step.values, `t = ${step.t}`);
+    });
+
+    log('phys-status-log', `Heat diffusion from node ${source}: ${result.steps.length} timesteps`);
+  } catch (e) {
+    log('phys-status-log', `Heat diffusion error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Reaction-diffusion patterns
+document.getElementById('btn-phys-rd')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  log('phys-status-log', 'Running Gray-Scott reaction-diffusion...');
+  try {
+    const params = {
+      grid_size: 8,
+      feed_rate: +document.getElementById('phys-rd-feed').value,
+      kill_rate: +document.getElementById('phys-rd-kill').value,
+      num_steps: 6,
+      steps_per_frame: 80,
+    };
+    const result = await api.physicsRDPattern(params);
+
+    const strip = document.getElementById('phys-rd-strip');
+    strip.hidden = false;
+    strip.innerHTML = '';
+
+    const rdGraph = {
+      positions: result.positions,
+      edges: result.edges,
+      num_nodes: result.num_nodes,
+    };
+
+    result.frames.forEach((frame, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'interp-step spatial-cell';
+      cell.style.minWidth = '160px';
+      cell.style.minHeight = '180px';
+      strip.appendChild(cell);
+      renderHeatmapGraph(cell, rdGraph, frame.B, `step ${frame.step}`);
+    });
+
+    log('phys-status-log', `Gray-Scott: f=${params.feed_rate} k=${params.kill_rate}, ${result.frames.length} frames`);
+  } catch (e) {
+    log('phys-status-log', `RD error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+
+// ---------------------------------------------------------------------------
 // Mesh Interpolation Panel
 // ---------------------------------------------------------------------------
 
@@ -1088,6 +1487,329 @@ document.getElementById('btn-run-wl')?.addEventListener('click', async function 
     log('wl-status-log', `WL test: ${result.distinguished ? 'Distinguished' : 'Indistinguishable'}`);
   } catch (e) {
     log('wl-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+
+// ---------------------------------------------------------------------------
+// Hyperbolic GNN
+// ---------------------------------------------------------------------------
+
+const HYP_COLORS = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'];
+
+function renderPoincareDisk(containerId, positions, edges, geodesicArcs, options = {}) {
+  const el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!el) return;
+  el.innerHTML = '';
+
+  const labels = options.labels || [];
+  const size = el.clientWidth || 400;
+
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', '-1.1 -1.1 2.2 2.2')
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .attr('width', size)
+    .attr('height', size);
+
+  // Unit circle boundary
+  svg.append('circle')
+    .attr('cx', 0).attr('cy', 0).attr('r', 1)
+    .attr('class', 'hyp-boundary');
+
+  // Concentric distance circles
+  [0.5, 0.75, 0.9].forEach(r => {
+    svg.append('circle')
+      .attr('cx', 0).attr('cy', 0).attr('r', r)
+      .attr('class', 'hyp-distance-circle');
+  });
+
+  // Draw edges or geodesic arcs
+  if (geodesicArcs && geodesicArcs.length > 0) {
+    geodesicArcs.forEach(arc => {
+      const lineGen = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveBasis);
+      svg.append('path')
+        .attr('d', lineGen(arc))
+        .attr('class', 'hyp-geodesic');
+    });
+  } else if (edges) {
+    edges.forEach(([s, t]) => {
+      if (positions[s] && positions[t]) {
+        svg.append('line')
+          .attr('x1', positions[s][0]).attr('y1', positions[s][1])
+          .attr('x2', positions[t][0]).attr('y2', positions[t][1])
+          .attr('class', 'hyp-edge');
+      }
+    });
+  }
+
+  // Draw nodes
+  const tooltip = d3.select(el).append('div')
+    .style('position', 'absolute').style('pointer-events', 'none')
+    .style('background', 'var(--bg-raised)').style('color', 'var(--text-primary)')
+    .style('padding', '2px 6px').style('border-radius', '4px')
+    .style('font-size', '11px').style('display', 'none');
+
+  positions.forEach((pos, i) => {
+    const label = labels[i] !== undefined ? labels[i] : 0;
+    const color = HYP_COLORS[label % HYP_COLORS.length];
+    svg.append('circle')
+      .attr('cx', pos[0]).attr('cy', pos[1]).attr('r', 0.025)
+      .attr('fill', color)
+      .attr('class', 'hyp-node')
+      .on('mouseenter', function (event) {
+        tooltip.style('display', 'block').text(`Node ${i}`);
+        const rect = el.getBoundingClientRect();
+        tooltip.style('left', (event.clientX - rect.left + 8) + 'px')
+          .style('top', (event.clientY - rect.top - 20) + 'px');
+      })
+      .on('mouseleave', () => tooltip.style('display', 'none'));
+  });
+}
+
+function renderEuclideanEmbedding(containerId, positions, edges, labels) {
+  const el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!el || !positions || positions.length === 0) return;
+  el.innerHTML = '';
+
+  const size = el.clientWidth || 300;
+
+  // Compute bounds
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  positions.forEach(([x, y]) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  });
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const pad = 30;
+  const scale = (size - 2 * pad) / Math.max(rangeX, rangeY);
+  const cx = size / 2, cy = size / 2;
+  const midX = (minX + maxX) / 2, midY = (minY + maxY) / 2;
+
+  const toScreen = ([x, y]) => ({
+    sx: cx + (x - midX) * scale,
+    sy: cy + (y - midY) * scale,
+  });
+
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', `0 0 ${size} ${size}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Edges
+  if (edges) {
+    edges.forEach(([s, t]) => {
+      if (positions[s] && positions[t]) {
+        const ps = toScreen(positions[s]), pt = toScreen(positions[t]);
+        svg.append('line')
+          .attr('x1', ps.sx).attr('y1', ps.sy).attr('x2', pt.sx).attr('y2', pt.sy)
+          .attr('stroke', '#334155').attr('stroke-width', 0.8).attr('stroke-opacity', 0.4);
+      }
+    });
+  }
+
+  // Nodes
+  positions.forEach((pos, i) => {
+    const sc = toScreen(pos);
+    const label = labels && labels[i] !== undefined ? labels[i] : 0;
+    const color = HYP_COLORS[label % HYP_COLORS.length];
+    svg.append('circle')
+      .attr('cx', sc.sx).attr('cy', sc.sy).attr('r', 4)
+      .attr('fill', color).attr('stroke', '#1e293b').attr('stroke-width', 0.8);
+  });
+}
+
+// Generate graph
+document.getElementById('btn-hyp-graph')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const type = document.getElementById('hyp-graph-type').value;
+    const depth = +document.getElementById('hyp-depth').value;
+    const data = await api.hyperbolicGraph({ graph_type: type, num_nodes: depth, branching_factor: 2 });
+
+    // Store globally for later use
+    window._hypState = {
+      positions: data.nodes.map(n => [n.x, n.y]),
+      edges: data.edges,
+      labels: data.nodes.map(n => n.label),
+    };
+
+    // Render initial positions
+    renderPoincareDisk('hyp-disk-viz', window._hypState.positions, data.edges, null, { labels: window._hypState.labels });
+
+    // Enable simulation and training buttons
+    document.getElementById('btn-hyp-sim-start').disabled = false;
+    document.getElementById('btn-hyp-sim-reset').disabled = false;
+    document.getElementById('btn-hyp-train').disabled = false;
+    document.getElementById('btn-hyp-compare').disabled = false;
+
+    // Update status
+    document.getElementById('hyp-graph-status').textContent = `${data.num_nodes} nodes, ${data.num_edges} edges`;
+    document.getElementById('hyp-graph-status').className = 'status-text success';
+
+    // Update title
+    document.getElementById('hyp-viz-title').textContent =
+      type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' in Poincar\u00e9 Disk';
+
+    // Reset viz sections
+    document.getElementById('hyp-predictions-viz').hidden = true;
+    document.getElementById('hyp-compare-viz').hidden = true;
+    document.getElementById('hyp-accuracy-display').hidden = true;
+
+    log('hyp-status-log', `Loaded ${type}: ${data.num_nodes} nodes, ${data.num_edges} edges`);
+  } catch (e) {
+    log('hyp-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Simulation loop
+async function hyperbolicSimLoop() {
+  if (!window._hypSimRunning) return;
+  try {
+    const result = await api.hyperbolicSimStep({ n_steps: 5 });
+    window._hypState.positions = result.positions;
+    document.getElementById('hyp-energy-val').textContent = result.energy.toFixed(4);
+    document.getElementById('hyp-step-val').textContent =
+      (+document.getElementById('hyp-step-val').textContent) + result.step;
+
+    // Fetch geodesic arcs for curved edges
+    const geoData = await api.hyperbolicGeodesics({ n_samples: 20 });
+    renderPoincareDisk('hyp-disk-viz', result.positions, window._hypState.edges, geoData.arcs, { labels: window._hypState.labels });
+
+    if (window._hypSimRunning) setTimeout(hyperbolicSimLoop, 100);
+  } catch (e) {
+    window._hypSimRunning = false;
+    log('hyp-status-log', `Simulation error: ${e.message}`);
+    document.getElementById('btn-hyp-sim-start').disabled = false;
+    document.getElementById('btn-hyp-sim-stop').disabled = true;
+  }
+}
+
+// Start simulation
+document.getElementById('btn-hyp-sim-start')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  try {
+    const params = {
+      curvature: +document.getElementById('hyp-curvature').value,
+      spring_k: +document.getElementById('hyp-spring-k').value,
+      target_length: +document.getElementById('hyp-target-len').value,
+      charge_c: +document.getElementById('hyp-charge').value,
+      lr: 0.01,
+    };
+    await api.hyperbolicSimInit(params);
+
+    document.getElementById('btn-hyp-sim-stop').disabled = false;
+    document.getElementById('btn-hyp-sim-start').disabled = true;
+    document.getElementById('hyp-step-val').textContent = '0';
+    window._hypSimRunning = true;
+    hyperbolicSimLoop();
+  } catch (e) {
+    log('hyp-status-log', `Init error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Stop simulation
+document.getElementById('btn-hyp-sim-stop')?.addEventListener('click', function () {
+  window._hypSimRunning = false;
+  document.getElementById('btn-hyp-sim-start').disabled = false;
+  document.getElementById('btn-hyp-sim-stop').disabled = true;
+});
+
+// Reset simulation
+document.getElementById('btn-hyp-sim-reset')?.addEventListener('click', async function () {
+  window._hypSimRunning = false;
+  setLoading(this, true);
+  try {
+    await api.hyperbolicSimReset();
+    renderPoincareDisk('hyp-disk-viz', window._hypState.positions, window._hypState.edges, null, { labels: window._hypState.labels });
+    document.getElementById('hyp-energy-val').textContent = '\u2014';
+    document.getElementById('hyp-step-val').textContent = '0';
+    document.getElementById('btn-hyp-sim-start').disabled = false;
+    document.getElementById('btn-hyp-sim-stop').disabled = true;
+  } catch (e) {
+    log('hyp-status-log', `Reset error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Train hyperbolic GNN
+document.getElementById('btn-hyp-train')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  document.getElementById('hyp-status-log').textContent = '';
+  log('hyp-status-log', 'Training Hyperbolic GNN...');
+
+  try {
+    const config = {
+      hidden_dim: +document.getElementById('hyp-hidden-dim').value,
+      num_layers: +document.getElementById('hyp-num-layers').value,
+      epochs: +document.getElementById('hyp-epochs').value,
+      lr: +document.getElementById('hyp-lr').value,
+      curvature: +document.getElementById('hyp-curvature').value,
+      layer_type: document.getElementById('hyp-layer-type').value,
+    };
+    const result = await api.hyperbolicTrain(config);
+
+    // Draw loss curve
+    const container = document.getElementById('hyp-loss-container');
+    container.innerHTML = '<canvas width="240" height="120"></canvas>';
+    drawLossCurve(container.querySelector('canvas'), result.losses);
+
+    // Show accuracy
+    const accDisplay = document.getElementById('hyp-accuracy-display');
+    accDisplay.hidden = false;
+    accDisplay.innerHTML = `
+      <div class="physics-acc-row"><span>Train accuracy</span><strong>${(result.train_acc * 100).toFixed(1)}%</strong></div>
+      <div class="physics-acc-row"><span>Val accuracy</span><strong>${(result.val_acc * 100).toFixed(1)}%</strong></div>
+    `;
+
+    // Show predictions on Poincare disk
+    const predViz = document.getElementById('hyp-predictions-viz');
+    predViz.hidden = false;
+    renderPoincareDisk('hyp-pred-disk', result.embeddings, window._hypState.edges, null, { labels: result.predictions });
+
+    log('hyp-status-log', `Done \u2014 ${(result.train_acc * 100).toFixed(1)}% train / ${(result.val_acc * 100).toFixed(1)}% val`);
+  } catch (e) {
+    log('hyp-status-log', `Error: ${e.message}`);
+  }
+  setLoading(this, false);
+});
+
+// Compare Euclidean vs Hyperbolic
+document.getElementById('btn-hyp-compare')?.addEventListener('click', async function () {
+  setLoading(this, true);
+  log('hyp-status-log', 'Training embeddings...');
+
+  try {
+    const params = {
+      embed_dim: +document.getElementById('hyp-embed-dim').value,
+      epochs: +document.getElementById('hyp-comp-epochs').value,
+      lr: 0.01,
+    };
+    const result = await api.hyperbolicCompare(params);
+
+    // Show comparison visualizations
+    const compViz = document.getElementById('hyp-compare-viz');
+    compViz.hidden = false;
+
+    // Euclidean embedding
+    renderEuclideanEmbedding('hyp-euclidean-viz', result.euclidean.positions, window._hypState.edges, window._hypState.labels);
+
+    // Poincare embedding
+    renderPoincareDisk('hyp-poincare-viz', result.hyperbolic.positions, window._hypState.edges, null, { labels: window._hypState.labels });
+
+    // Show distortion metrics
+    const display = document.getElementById('hyp-compare-display');
+    display.innerHTML = `<table>
+      <tr><th></th><th>Euclidean</th><th>Poincar\u00e9</th></tr>
+      <tr><td>Distortion</td><td>${result.euclidean.distortion.toFixed(4)}</td><td>${result.hyperbolic.distortion.toFixed(4)}</td></tr>
+      <tr><td>Mean Edge Dist Error</td><td>${result.euclidean.avg_dist_error.toFixed(4)}</td><td>${result.hyperbolic.avg_dist_error.toFixed(4)}</td></tr>
+    </table>`;
+
+    log('hyp-status-log', 'Comparison complete');
+  } catch (e) {
+    log('hyp-status-log', `Error: ${e.message}`);
   }
   setLoading(this, false);
 });
