@@ -408,19 +408,28 @@ def full_evaluation(
     results['mmd'] = spatial_graph_mmd(generated, reference)
 
     # distributional comparisons on segment lengths
-    gen_lengths = torch.cat([g.segment_lengths() for g in generated])
-    ref_lengths = torch.cat([g.segment_lengths() for g in reference])
-    results['segment_length_w1'] = _wasserstein_1d(gen_lengths, ref_lengths)
+    gen_list = [g.segment_lengths() for g in generated if g.segment_lengths().numel() > 0]
+    ref_list = [g.segment_lengths() for g in reference if g.segment_lengths().numel() > 0]
+    if gen_list and ref_list:
+        results['segment_length_w1'] = _wasserstein_1d(torch.cat(gen_list), torch.cat(ref_list))
+    else:
+        results['segment_length_w1'] = float('nan')
 
     # branch angles
-    gen_angles = torch.cat([g.branch_angles() for g in generated if g.branch_angles().numel() > 0])
-    ref_angles = torch.cat([g.branch_angles() for g in reference if g.branch_angles().numel() > 0])
-    results['branch_angle_w1'] = _wasserstein_1d(gen_angles, ref_angles)
+    gen_list = [g.branch_angles() for g in generated if g.branch_angles().numel() > 0]
+    ref_list = [g.branch_angles() for g in reference if g.branch_angles().numel() > 0]
+    if gen_list and ref_list:
+        results['branch_angle_w1'] = _wasserstein_1d(torch.cat(gen_list), torch.cat(ref_list))
+    else:
+        results['branch_angle_w1'] = float('nan')
 
     # Strahler order distribution
-    gen_strahler = torch.cat([strahler_numbers(g).float() for g in generated])
-    ref_strahler = torch.cat([strahler_numbers(g).float() for g in reference])
-    results['strahler_w1'] = _wasserstein_1d(gen_strahler, ref_strahler)
+    gen_list = [strahler_numbers(g).float() for g in generated if strahler_numbers(g).numel() > 0]
+    ref_list = [strahler_numbers(g).float() for g in reference if strahler_numbers(g).numel() > 0]
+    if gen_list and ref_list:
+        results['strahler_w1'] = _wasserstein_1d(torch.cat(gen_list), torch.cat(ref_list))
+    else:
+        results['strahler_w1'] = float('nan')
 
     # average morphological features
     gen_feats = torch.stack([morphological_features(g) for g in generated])
