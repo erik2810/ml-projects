@@ -1308,9 +1308,9 @@ footer {
 }
 
 .physics-edge {
-  stroke: var(--color-border);
+  stroke: var(--color-text-mute);
   stroke-width: 1.5;
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.35;
 }
 
 .physics-node {
@@ -1357,9 +1357,10 @@ footer {
 
 .hyperbolic-boundary {
   fill: none;
-  stroke: var(--color-border);
+  stroke: var(--color-text-mute);
   stroke-width: 0.02;
   stroke-dasharray: 0.04 0.02;
+  opacity: 0.6;
 }
 
 .hyperbolic-grid-circle {
@@ -1372,8 +1373,9 @@ footer {
 
 .hyperbolic-edge {
   fill: none;
-  stroke: var(--color-border);
+  stroke: var(--color-text-mute);
   stroke-width: 0.02;
+  stroke-opacity: 0.5;
   stroke-linecap: round;
 }
 
@@ -1802,4 +1804,134 @@ footer {
   .guide-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================================================
+   Dark Mode
+   ========================================================================= */
+
+.theme-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: background var(--transition), border-color var(--transition);
+}
+.theme-toggle:hover {
+  box-shadow: var(--shadow-lg);
+}
+.theme-toggle .icon-light,
+.theme-toggle .icon-dark {
+  position: absolute;
+  transition: opacity 0.2s ease;
+}
+[data-theme="dark"] .theme-toggle .icon-light { opacity: 0; }
+[data-theme="dark"] .theme-toggle .icon-dark  { opacity: 1; }
+[data-theme="light"] .theme-toggle .icon-light { opacity: 1; }
+[data-theme="light"] .theme-toggle .icon-dark  { opacity: 0; }
+
+[data-theme="dark"] {
+  --color-bg:        #0f1219;
+  --color-surface:   #171c28;
+  --color-text:      #e2e8f0;
+  --color-text-mute: #94a3b8;
+  --color-accent:    #818cf8;
+  --color-accent-lt: #a5b4fc;
+  --color-accent-bg: rgba(99,102,241,0.12);
+  --color-border:    #2d3548;
+  --color-code-bg:   #1e2433;
+  --color-success:   #34d399;
+  --color-warn:      #fbbf24;
+  --shadow-sm:       0 1px 3px rgba(0,0,0,0.25);
+  --shadow-md:       0 4px 16px rgba(0,0,0,0.35);
+  --shadow-lg:       0 8px 32px rgba(0,0,0,0.45);
+}
+
+[data-theme="dark"] nav {
+  background: rgba(15,18,25,0.88);
+}
+
+[data-theme="dark"] .hero {
+  background: linear-gradient(135deg, #171c28 0%, #1e2433 100%);
+}
+
+[data-theme="dark"] .stat-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .method-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .wl-pair {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .physics-graph-viz {
+  background: var(--color-code-bg);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .physics-edge {
+  stroke: #64748b;
+  stroke-opacity: 0.7;
+}
+
+[data-theme="dark"] .physics-node {
+  stroke: var(--color-surface);
+}
+
+[data-theme="dark"] .hyperbolic-boundary {
+  stroke: #475569;
+}
+
+[data-theme="dark"] .hyperbolic-grid-circle {
+  stroke: #334155;
+}
+
+[data-theme="dark"] .hyperbolic-edge {
+  stroke: #64748b;
+}
+
+[data-theme="dark"] .hyperbolic-node {
+  stroke: var(--color-surface);
+}
+
+[data-theme="dark"] .guide-card-demo {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .theme-toggle {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .btn--outline {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .btn--outline:hover {
+  background: var(--color-accent-bg);
+}
+
+[data-theme="dark"] .tag {
+  background: var(--color-code-bg);
+  color: var(--color-text-mute);
+  border-color: var(--color-border);
 }

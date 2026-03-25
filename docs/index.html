@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -747,7 +747,26 @@
     </div>
   </footer>
 
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+    <span class="icon-light">&#9788;</span>
+    <span class="icon-dark">&#9790;</span>
+  </button>
+
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="js/demo.js"></script>
+  <script>
+    (function() {
+      const toggle = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+      const saved = localStorage.getItem('theme');
+      if (saved) html.setAttribute('data-theme', saved);
+      else if (window.matchMedia('(prefers-color-scheme: dark)').matches) html.setAttribute('data-theme', 'dark');
+      toggle.addEventListener('click', function() {
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('theme', next);
+      });
+    })();
+  </script>
 </body>
 </html>

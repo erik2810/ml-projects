@@ -889,6 +889,7 @@ document.getElementById('btn-phys-dataset')?.addEventListener('click', async fun
     physicsDataLoaded = true;
 
     renderPhysicsGraph('phys-main-viz', result.graph, 'labels');
+    document.getElementById('phys-main-viz').scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('phys-viz-title').textContent = result.graph.name || 'Physical System';
     document.getElementById('phys-dataset-status').textContent = `${result.graph.num_nodes} nodes, ${result.graph.num_edges} edges`;
     document.getElementById('phys-dataset-status').className = 'status-text success';
@@ -1636,6 +1637,7 @@ document.getElementById('btn-hyp-graph')?.addEventListener('click', async functi
 
     // Render initial positions
     renderPoincareDisk('hyp-disk-viz', window._hypState.positions, data.edges, null, { labels: window._hypState.labels });
+    document.getElementById('hyp-disk-viz').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     // Enable simulation and training buttons
     document.getElementById('btn-hyp-sim-start').disabled = false;
