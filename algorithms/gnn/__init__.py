@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from algorithms.gnn.dataset import KarateClubDataset
 from algorithms.gnn.model import (
+    GATNodeClassifier,
     GCNGraphClassifier,
     GCNNodeClassifier,
-    GATNodeClassifier,
 )
 
 __all__ = [

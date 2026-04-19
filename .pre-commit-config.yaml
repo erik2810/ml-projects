@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      # Lint and auto-fix only the framework directories. Legacy code
+      # under backend/ and scripts/ has pre-existing violations and is
+      # intentionally out of scope.
+      - id: ruff
+        args: [--fix, core/, algorithms/, experiments/]
+        files: ^(core|algorithms|experiments)/
