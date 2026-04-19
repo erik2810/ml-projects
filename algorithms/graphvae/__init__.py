@@ -13,6 +13,6 @@ Registered components:
 from __future__ import annotations
 
 from algorithms.graphvae.dataset import SocialSkeletonsDataset
-from algorithms.graphvae.model import GraphVAEModel, GraphDiffusionModel
+from algorithms.graphvae.model import GraphDiffusionModel, GraphVAEModel
 
 __all__ = ["GraphVAEModel", "GraphDiffusionModel", "SocialSkeletonsDataset"]

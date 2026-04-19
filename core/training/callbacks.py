@@ -128,4 +128,6 @@ class ProgressLogger(Callback):
 
 
 def _format_metrics(metrics: dict[str, Any]) -> str:
-    return ", ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}" for k, v in metrics.items())
+    def fmt(k: str, v: Any) -> str:
+        return f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}"
+    return ", ".join(fmt(k, v) for k, v in metrics.items())

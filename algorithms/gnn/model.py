@@ -25,7 +25,6 @@ from backend.core.gnn.model import GraphClassifier, NodeClassifier
 from core.models.base import BaseModel
 from core.registry import register
 
-
 # --------------------------------------------------------------------- #
 # Node classification                                                   #
 # --------------------------------------------------------------------- #

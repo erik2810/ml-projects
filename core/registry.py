@@ -34,7 +34,8 @@ def register(name: str, *, kind: str = "model") -> Callable[[type[T]], type[T]]:
 
     def decorator(cls: type[T]) -> type[T]:
         if name in _REGISTRIES[kind]:
-            raise ValueError(f"{kind} '{name}' is already registered to {_REGISTRIES[kind][name]!r}")
+            existing = _REGISTRIES[kind][name]
+            raise ValueError(f"{kind} '{name}' is already registered to {existing!r}")
         _REGISTRIES[kind][name] = cls
         return cls
 

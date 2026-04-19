@@ -14,6 +14,6 @@ Registered components:
 from __future__ import annotations
 
 from algorithms.hyperbolic.dataset import TreeGraphDataset
-from algorithms.hyperbolic.model import HyperbolicGNNModel, HyperbolicEmbeddingModel
+from algorithms.hyperbolic.model import HyperbolicEmbeddingModel, HyperbolicGNNModel
 
 __all__ = ["HyperbolicGNNModel", "HyperbolicEmbeddingModel", "TreeGraphDataset"]

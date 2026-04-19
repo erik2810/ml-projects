@@ -21,10 +21,12 @@ declaratively via YAML configs.
 
 from __future__ import annotations
 
-from algorithms import generator  # noqa: F401
-from algorithms import gnn  # noqa: F401
-from algorithms import graphvae  # noqa: F401
-from algorithms import hyperbolic  # noqa: F401
-from algorithms import physics_gnn  # noqa: F401
+from algorithms import (
+    generator,  # noqa: F401
+    gnn,  # noqa: F401
+    graphvae,  # noqa: F401
+    hyperbolic,  # noqa: F401
+    physics_gnn,  # noqa: F401
+)
 
 __all__ = ["generator", "gnn", "graphvae", "hyperbolic", "physics_gnn"]
