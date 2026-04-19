@@ -1,0 +1,29 @@
+name: karate_gcn
+description: GCN node classification on Zachary's karate club.
+tags: [baseline, gnn]
+
+model:
+  name: gcn_node
+  params:
+    in_features: 18   # karate club one-hot degree: max_deg + 1
+    num_classes: 2
+    hidden: 16
+    n_layers: 2
+    dropout: 0.0
+    lr: 0.01
+
+dataset:
+  name: karate_club
+  params:
+    per_class: 4
+    seed: 0
+
+training:
+  max_epochs: 80
+  seed: 0
+  device: cpu
+  log_every: 20
+  early_stopping:
+    monitor: val_loss
+    patience: 15
+    mode: min
