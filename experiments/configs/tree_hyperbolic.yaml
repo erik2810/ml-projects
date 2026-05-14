@@ -1,0 +1,29 @@
+name: tree_hyperbolic
+description: Hyperbolic GNN on a synthetic balanced tree.
+tags: [hyperbolic, gnn]
+
+model:
+  name: hyperbolic_gnn
+  params:
+    in_channels: 5   # max_deg + 1 on a balanced tree (depth 3, branching 3)
+    out_channels: 2
+    hidden_channels: 16
+    num_layers: 2
+    c: 1.0
+    dropout: 0.0
+    lr: 0.01
+
+dataset:
+  name: tree_graph
+  params:
+    depth: 3
+    branching: 3
+    num_classes: 2
+    per_class: 3
+    seed: 0
+
+training:
+  max_epochs: 40
+  seed: 0
+  device: cpu
+  log_every: 10

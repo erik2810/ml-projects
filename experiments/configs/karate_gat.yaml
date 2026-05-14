@@ -1,0 +1,26 @@
+name: karate_gat
+description: GAT node classification on Zachary's karate club.
+tags: [baseline, gnn, attention]
+
+model:
+  name: gat_node
+  params:
+    in_features: 18
+    num_classes: 2
+    hidden: 8
+    n_layers: 2
+    n_heads: 2
+    dropout: 0.2
+    lr: 0.005
+
+dataset:
+  name: karate_club
+  params:
+    per_class: 4
+    seed: 0
+
+training:
+  max_epochs: 60
+  seed: 0
+  device: cpu
+  log_every: 15
