@@ -35,6 +35,7 @@ from .layers import (
     ReactionDiffusionLayer,
     CurvatureAttention,
     GeometricEdgeEncoder,
+    EGNNLayer,
 )
 from .operators import (
     discrete_curvatures,
@@ -307,6 +308,77 @@ class PhysicsInformedGNN(nn.Module):
             return output, energy
 
         return output
+
+
+# ---------------------------------------------------------------------------
+# E(n)-Equivariant Graph Neural Network
+# ---------------------------------------------------------------------------
+
+class EGNN(nn.Module):
+    r"""E(n)-equivariant graph neural network (Satorras et al., ICML 2021).
+
+    Stacks :class:`EGNNLayer` blocks so that, under any rigid motion
+    :math:`x \mapsto Rx + t` of the input coordinates, the scalar node outputs
+    are invariant and the coordinate outputs are equivariant. It is the strict
+    SE(3) counterpart to :class:`PhysicsInformedGNN`: that model injects geometry
+    through cotangent weights but also feeds the raw coordinates and relative
+    vectors into MLPs, so it is only translation-invariant. EGNN keeps the full
+    rotation-plus-translation symmetry by construction, using only the invariant
+    squared distance in its messages and only the equivariant relative vectors in
+    its coordinate update.
+
+    Args:
+        in_channels: input node-feature width (scalar, coordinate-independent).
+        hidden_channels: hidden feature width carried between layers.
+        out_channels: output width of the invariant node readout.
+        num_layers: number of equivariant message-passing blocks.
+        message_dim: message width inside each layer (defaults to hidden_channels).
+        update_coordinates: if False, coordinates pass through unchanged and only
+            the invariant features are refined.
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int = 64,
+        out_channels: int = 1,
+        num_layers: int = 4,
+        message_dim: Optional[int] = None,
+        update_coordinates: bool = True,
+    ):
+        super().__init__()
+        self.embed = nn.Linear(in_channels, hidden_channels)
+        self.layers = nn.ModuleList(
+            EGNNLayer(
+                hidden_channels,
+                message_dim=message_dim,
+                update_coordinates=update_coordinates,
+            )
+            for _ in range(num_layers)
+        )
+        self.readout = nn.Linear(hidden_channels, out_channels)
+
+    def forward(
+        self,
+        h: Tensor,
+        positions: Tensor,
+        adj: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Args:
+            h: (N, in_channels) invariant node features [Nodes, Channels].
+            positions: (N, 3) node coordinates [Nodes, 3].
+            adj: (N, N) binary adjacency with zero diagonal [Nodes, Nodes].
+
+        Returns:
+            (node_output, coordinates): (N, out_channels) invariant node
+            predictions, and (N, 3) equivariant coordinates.
+        """
+        h = self.embed(h)
+        x = positions
+        for layer in self.layers:
+            h, x = layer(h, x, adj)
+        return self.readout(h), x
 
 
 # ---------------------------------------------------------------------------

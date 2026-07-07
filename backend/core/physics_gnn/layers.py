@@ -623,3 +623,120 @@ class GeometricEdgeEncoder(nn.Module):
 
         edge_input = torch.cat([diff, dist, direction], dim=2)  # (N, N, 7)
         return self.mlp(edge_input)
+
+
+# ---------------------------------------------------------------------------
+# E(n)-Equivariant Graph Convolution
+# ---------------------------------------------------------------------------
+
+class EGNNLayer(nn.Module):
+    r"""E(n)-equivariant graph convolution (Satorras et al., ICML 2021).
+
+    A strict SE(3)-equivariant message-passing layer. Under any rigid motion of
+    the input coordinates, :math:`x \mapsto Rx + t` with a rotation :math:`R` and
+    translation :math:`t`, the scalar node *features* are invariant and the node
+    *coordinates* transform equivariantly (every updated coordinate maps the same
+    way). Both properties are guaranteed by construction, not learned:
+
+        * The edge message sees the coordinates only through the squared distance
+          :math:`\lVert x_i - x_j \rVert^2`, which no rigid motion changes, so the
+          messages and therefore the feature update are invariant.
+        * The coordinate update moves each node along a learned combination of the
+          relative vectors :math:`x_i - x_j`, which rotate and translate with the
+          input, so the update is equivariant.
+
+    This is the contrast with the other layers in this module (``CotangentConv``,
+    ``GeometricEdgeEncoder``), which feed the raw relative vector or absolute
+    positions into an MLP and are therefore only translation-invariant, not
+    rotation-invariant.
+
+    Message:      m_ij = phi_e(h_i, h_j, ||x_i - x_j||^2)              [Edges, M]
+    Features:     h_i' = h_i + phi_h(h_i, sum_j m_ij)                  [Nodes, F]
+    Coordinates:  x_i' = x_i + (1/deg_i) sum_j (x_i - x_j) phi_x(m_ij) [Nodes, 3]
+
+    Operates on dense adjacency, matching the rest of this package.
+
+    Args:
+        feature_dim: node feature width F (features stay F-dimensional).
+        message_dim: message width M (defaults to feature_dim).
+        hidden_dim: hidden width of the three MLPs (defaults to feature_dim).
+        update_coordinates: if False, return coordinates unchanged (feature-only,
+            still invariant), useful for stacking a coordinate-frozen block.
+    """
+
+    def __init__(
+        self,
+        feature_dim: int,
+        message_dim: Optional[int] = None,
+        hidden_dim: Optional[int] = None,
+        update_coordinates: bool = True,
+        bias: bool = True,
+    ):
+        super().__init__()
+        message_dim = message_dim or feature_dim
+        hidden_dim = hidden_dim or feature_dim
+        self.feature_dim = feature_dim
+        self.message_dim = message_dim
+        self.update_coordinates = update_coordinates
+
+        # phi_e: (h_i, h_j, ||x_i - x_j||^2) -> edge message
+        self.edge_mlp = nn.Sequential(
+            nn.Linear(2 * feature_dim + 1, hidden_dim, bias=bias),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, message_dim, bias=bias),
+            nn.SiLU(),
+        )
+        # phi_x: edge message -> scalar coordinate weight
+        self.coord_mlp = nn.Sequential(
+            nn.Linear(message_dim, hidden_dim, bias=bias),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, 1, bias=False),
+        )
+        # phi_h: (h_i, aggregated message) -> feature update
+        self.node_mlp = nn.Sequential(
+            nn.Linear(feature_dim + message_dim, hidden_dim, bias=bias),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, feature_dim, bias=bias),
+        )
+        # Zero-init the coordinate readout so the layer starts as (near) identity
+        # on positions, which keeps the equivariant update from exploding early in
+        # training (Satorras et al., appendix).
+        nn.init.zeros_(self.coord_mlp[-1].weight)
+
+    def forward(self, h: Tensor, x: Tensor, adj: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Args:
+            h: (N, feature_dim) invariant node features [Nodes, Channels].
+            x: (N, 3) node coordinates [Nodes, 3].
+            adj: (N, N) binary adjacency with zero diagonal [Nodes, Nodes].
+
+        Returns:
+            (h_out, x_out): updated features (N, feature_dim), invariant; and
+            coordinates (N, 3), equivariant.
+        """
+        N = h.size(0)
+        mask = (adj > 0).to(h.dtype).unsqueeze(-1)  # (N, N, 1) edge indicator
+
+        rel = x.unsqueeze(1) - x.unsqueeze(0)  # (N, N, 3) x_i - x_j (equivariant)
+        dist2 = (rel * rel).sum(dim=-1, keepdim=True)  # (N, N, 1) ||x_i - x_j||^2 (invariant)
+
+        h_i = h.unsqueeze(1).expand(N, N, -1)  # (N, N, F)
+        h_j = h.unsqueeze(0).expand(N, N, -1)  # (N, N, F)
+        edge_in = torch.cat([h_i, h_j, dist2], dim=-1)  # (N, N, 2F+1)
+        m_ij = self.edge_mlp(edge_in) * mask  # (N, N, M) messages, edges only
+
+        # Coordinate update: sum of relative vectors weighted by a per-edge scalar,
+        # normalised by the neighbour count. Every term is (equivariant vector) x
+        # (invariant scalar), so the whole update is equivariant.
+        if self.update_coordinates:
+            coord_w = self.coord_mlp(m_ij) * mask  # (N, N, 1) invariant weights
+            deg = mask.sum(dim=1).clamp(min=1.0)  # (N, 1) neighbour count
+            x_out = x + (rel * coord_w).sum(dim=1) / deg  # (N, 3) equivariant
+        else:
+            x_out = x
+
+        # Feature update: aggregate the invariant messages, so h stays invariant.
+        m_i = m_ij.sum(dim=1)  # (N, M)
+        h_out = h + self.node_mlp(torch.cat([h, m_i], dim=-1))  # (N, F) invariant
+
+        return h_out, x_out

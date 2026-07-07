@@ -47,6 +47,7 @@ from .layers import (
     ManifoldMessagePassing,
     CurvatureAttention,
     GeometricEdgeEncoder,
+    EGNNLayer,
 )
 
 # Energy functionals and regularisation
@@ -63,6 +64,7 @@ from .energy import (
 from .models import (
     PhysicsInformedGNN,
     PhysicsInformedGraphGenerator,
+    EGNN,
 )
 
 # Training utilities
@@ -92,6 +94,7 @@ __all__ = [
     'ManifoldMessagePassing',
     'CurvatureAttention',
     'GeometricEdgeEncoder',
+    'EGNNLayer',
     # energy
     'dirichlet_energy',
     'dirichlet_energy_from_positions',
@@ -102,6 +105,7 @@ __all__ = [
     # models
     'PhysicsInformedGNN',
     'PhysicsInformedGraphGenerator',
+    'EGNN',
     # train
     'TrainConfig',
     'AblationResult',
