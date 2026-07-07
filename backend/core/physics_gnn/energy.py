@@ -17,17 +17,18 @@ References:
         Algorithms", Physica D 60, 1992
 """
 
+import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 from torch import Tensor
-from typing import Optional
 
 from .operators import (
     cotangent_laplacian,
     geometric_edge_weights,
     weighted_laplacian,
 )
-
 
 # ---------------------------------------------------------------------------
 # Dirichlet energy (smoothness)

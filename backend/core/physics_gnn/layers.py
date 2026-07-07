@@ -24,22 +24,19 @@ References:
     Chami et al., "Hyperbolic Graph Convolutional Neural Networks", NeurIPS 2019
 """
 
+import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import math
-from typing import Optional
 
 from .operators import (
+    cotangent_laplacian,
     geometric_edge_weights,
     weighted_laplacian,
-    symmetric_normalised_laplacian,
-    cotangent_laplacian,
-    discrete_curvatures,
-    heat_kernel,
 )
-
 
 # ---------------------------------------------------------------------------
 # Cotangent Convolution
@@ -461,7 +458,10 @@ class ManifoldMessagePassing(nn.Module):
                 transformed = transformed + self.bias
 
             # Map back to manifold
-            origin = x[i, :self.out_channels] if x.size(1) >= self.out_channels else F.pad(x[i], (0, self.out_channels - x.size(1)))
+            if x.size(1) >= self.out_channels:
+                origin = x[i, :self.out_channels]
+            else:
+                origin = F.pad(x[i], (0, self.out_channels - x.size(1)))
             out[i] = M.expmap(origin, M.proju(origin, transformed))
 
         return out

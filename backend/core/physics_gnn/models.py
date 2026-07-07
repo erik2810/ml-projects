@@ -22,30 +22,28 @@ Architecture design philosophy:
     Energy regularisation grounds predictions in physical consistency.
 """
 
+from typing import Literal, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-import math
-from typing import Optional, Literal
 
+from .energy import PhysicsRegulariser
 from .layers import (
     CotangentConv,
-    DiffusionConv,
-    ReactionDiffusionLayer,
     CurvatureAttention,
-    GeometricEdgeEncoder,
+    DiffusionConv,
     EGNNLayer,
+    GeometricEdgeEncoder,
+    ReactionDiffusionLayer,
 )
 from .operators import (
+    cotangent_laplacian,
     discrete_curvatures,
     geometric_edge_weights,
     weighted_laplacian,
-    symmetric_normalised_laplacian,
-    cotangent_laplacian,
 )
-from .energy import PhysicsRegulariser
-
 
 # ---------------------------------------------------------------------------
 # Curvature feature extractor (preprocessing)
@@ -235,8 +233,6 @@ class PhysicsInformedGNN(nn.Module):
             output: (N, out_channels) for node task, (out_channels,) for graph task.
             energy: scalar regularisation loss (only if return_energy=True).
         """
-        N = positions.size(0)
-
         # Curvature features
         curv_dict = None
         input_parts = [positions]
@@ -563,8 +559,6 @@ class PhysicsInformedGraphGenerator(nn.Module):
             valid = mask_target > 0.5
         else:
             valid = torch.ones(N, dtype=torch.bool, device=pos_pred.device)
-
-        n_valid = valid.sum().clamp(min=1)
 
         # Position loss (MSE on valid nodes)
         pos_loss = F.mse_loss(pos_pred[valid], pos_target[valid])

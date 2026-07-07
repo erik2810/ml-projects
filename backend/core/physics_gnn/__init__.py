@@ -28,53 +28,52 @@ train
 """
 
 # Geometric operators
-from .operators import (
-    cotangent_laplacian,
-    geometric_edge_weights,
-    weighted_laplacian,
-    symmetric_normalised_laplacian,
-    discrete_curvatures,
-    heat_kernel,
-    multiscale_diffusion_filters,
-    heat_method_distances,
+# Energy functionals and regularisation
+from .energy import (
+    PhysicsRegulariser,
+    dirichlet_energy,
+    dirichlet_energy_from_positions,
+    elastic_energy,
+    total_variation,
+    willmore_energy,
 )
 
 # Neural network layers
 from .layers import (
     CotangentConv,
-    DiffusionConv,
-    ReactionDiffusionLayer,
-    ManifoldMessagePassing,
     CurvatureAttention,
-    GeometricEdgeEncoder,
+    DiffusionConv,
     EGNNLayer,
-)
-
-# Energy functionals and regularisation
-from .energy import (
-    dirichlet_energy,
-    dirichlet_energy_from_positions,
-    total_variation,
-    willmore_energy,
-    elastic_energy,
-    PhysicsRegulariser,
+    GeometricEdgeEncoder,
+    ManifoldMessagePassing,
+    ReactionDiffusionLayer,
 )
 
 # Model architectures
 from .models import (
+    EGNN,
     PhysicsInformedGNN,
     PhysicsInformedGraphGenerator,
-    EGNN,
+)
+from .operators import (
+    cotangent_laplacian,
+    discrete_curvatures,
+    geometric_edge_weights,
+    heat_kernel,
+    heat_method_distances,
+    multiscale_diffusion_filters,
+    symmetric_normalised_laplacian,
+    weighted_laplacian,
 )
 
 # Training utilities
 from .train import (
-    TrainConfig,
     AblationResult,
-    train_node_model,
-    train_generator,
-    run_ablation,
+    TrainConfig,
     print_ablation_table,
+    run_ablation,
+    train_generator,
+    train_node_model,
 )
 
 __all__ = [
