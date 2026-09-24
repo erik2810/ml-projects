@@ -29,6 +29,7 @@ router = APIRouter(prefix="/hyperbolic", tags=["hyperbolic"])
 _state = {
     'positions': None,   # tensor (N, 2) Poincare disk positions
     'edges': None,       # list of [i, j]
+    'adj': None,         # dense (N, N), symmetric
     'labels': None,      # tensor (N,)
     'num_nodes': 0,
     'simulation': None,  # HyperbolicSimulation instance
@@ -261,6 +262,7 @@ def generate_graph(req: GraphRequest):
     # Store state
     _state['positions'] = positions
     _state['edges'] = edges
+    _state['adj'] = adj
     _state['labels'] = labels_tensor
     _state['num_nodes'] = num_nodes
     _state['features'] = features
@@ -387,12 +389,7 @@ def train_model(req: TrainRequest):
         num_nodes = _state['num_nodes']
         features = _state['features']
         labels = _state['labels']
-
-        # Build adjacency matrix
-        adj = torch.zeros(num_nodes, num_nodes)
-        for i, j in _state['edges']:
-            adj[i, j] = 1.0
-            adj[j, i] = 1.0
+        adj = _state['adj']
 
         num_classes = int(labels.max().item()) + 1
         use_attention = (req.layer_type == "gat")
