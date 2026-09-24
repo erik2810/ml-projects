@@ -81,7 +81,6 @@ def train(req: TrainRequest):
     )
     _state["model"] = model
 
-    # save checkpoint
     path = CHECKPOINT_DIR / "gnn_node_classifier.pt"
     torch.save(model.state_dict(), path)
 

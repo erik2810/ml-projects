@@ -177,7 +177,6 @@ def interpolate_geometric(req: InterpolateRequest):
     sg_a = adj_to_spatial_graph_2d(adj_a)
     sg_b = adj_to_spatial_graph_2d(adj_b)
 
-    # Run geometric interpolation
     interp_steps = geometric_interpolate(sg_a, sg_b, steps=req.steps)
 
     return {
