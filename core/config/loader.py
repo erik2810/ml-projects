@@ -45,13 +45,18 @@ def _parse(text: str, suffix: str) -> dict[str, Any]:
         return _yaml.safe_load(text) or {}
     if suffix == ".json":
         return json.loads(text)
-    # Best-effort: try YAML if available, else JSON
-    if _yaml is not None:
+    # Unknown extension. YAML reads most JSON, but PyYAML rejects some valid
+    # JSON (tab indentation), so fall back to json. If that fails too, the YAML
+    # error is the one worth showing.
+    if _yaml is None:
+        return json.loads(text)
+    try:
+        return _yaml.safe_load(text) or {}
+    except _yaml.YAMLError as yaml_err:
         try:
-            return _yaml.safe_load(text) or {}
-        except _yaml.YAMLError:
-            pass
-    return json.loads(text)
+            return json.loads(text)
+        except json.JSONDecodeError:
+            raise yaml_err from None
 
 
 def _require_yaml() -> None:

@@ -274,3 +274,16 @@ def test_experiment_config_yaml_roundtrip_if_available(tmp_path: Path):
     dump_config(cfg, path)
     restored = load_config(path)
     assert restored.name == "demo"
+
+
+def test_unknown_extension_reports_the_yaml_error(tmp_path: Path):
+    yaml = pytest.importorskip("yaml")
+    tabbed = tmp_path / "tabbed.cfg"
+    tabbed.write_text('{\n\t"name": "demo",\n\t"model": {"name": "tiny_reg"},\n'
+                      '\t"dataset": {"name": "xy"}\n}')
+    assert load_config(tabbed).name == "demo"
+
+    broken = tmp_path / "broken.cfg"
+    broken.write_text("name: demo\nmodel:\n  name: tiny_reg\n   lr: 0.1\n")
+    with pytest.raises(yaml.YAMLError):
+        load_config(broken)
