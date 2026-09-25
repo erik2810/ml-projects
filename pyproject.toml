@@ -25,6 +25,11 @@ dev = [
     "ruff>=0.1.0",
 ]
 
+[tool.setuptools.packages.find]
+# demo/, frontend/ and experiments/ hold no Python, but their presence makes
+# flat-layout auto-discovery bail out, so name the packages explicitly
+include = ["core*", "algorithms*", "backend*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
