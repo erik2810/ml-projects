@@ -103,7 +103,6 @@ def _generate_heat_labels(pos, adj, n_sources=3):
     L = weighted_laplacian(W)
     K = heat_kernel(L, t=2.0)
 
-    # Place heat sources
     sources = torch.zeros(N)
     src_idx = torch.randperm(N)[:n_sources]
     sources[src_idx] = 1.0
@@ -125,7 +124,6 @@ def _generate_curvature_labels(pos, adj):
     curv = discrete_curvatures(pos, adj)
     curvedness = curv['curvedness']
 
-    # Normalize
     c_norm = (curvedness - curvedness.min()) / (curvedness.max() - curvedness.min() + 1e-8)
 
     labels = torch.zeros(pos.size(0), dtype=torch.long)
@@ -247,7 +245,6 @@ def generate_dataset(req: DatasetRequest):
     else:
         raise HTTPException(400, f"Unknown scenario: {req.scenario}")
 
-    # Store for training
     _state['train_data'] = {
         'pos': pos.to(DEVICE),
         'adj': adj.to(DEVICE),
@@ -329,7 +326,6 @@ def train_model(req: TrainRequest):
     _state['train_mask'] = train_mask
     _state['val_mask'] = val_mask
 
-    # Evaluate
     model.eval()
     with torch.no_grad():
         out = model(pos, adj)
@@ -611,12 +607,10 @@ def reaction_diffusion_pattern(req: RDPatternRequest):
     W = geometric_edge_weights(pos, adj)
     L = weighted_laplacian(W)
 
-    # Normalize Laplacian
     D = (-L.diagonal()).clamp(min=1e-8)
     D_inv_sqrt = D.pow(-0.5)
     L_norm = D_inv_sqrt.unsqueeze(1) * L * D_inv_sqrt.unsqueeze(0)
 
-    # Initialize concentrations
     A = torch.ones(N, device=DEVICE)
     B = torch.zeros(N, device=DEVICE)
 

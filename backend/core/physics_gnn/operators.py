@@ -23,12 +23,11 @@ References:
     Crane, Weischedel & Wardetzky, "Geodesics in Heat", ACM ToG 32(5), 2013
 """
 
-import torch
-import torch.nn.functional as F
-from torch import Tensor
 import math
 from typing import Optional, Tuple
 
+import torch
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Cotangent weights (exact, for triangle meshes)
@@ -66,10 +65,8 @@ def cotangent_laplacian(
 
     # Cotangent at vertex i = dot(e_from_i, e_from_i_other) / |cross|
     # At v0: angle between e01 and -e20
+    # All three edge cross products share the same norm (twice the face area).
     cross0 = torch.linalg.cross(e01, -e20)
-    cross1 = torch.linalg.cross(e12, -e01)
-    cross2 = torch.linalg.cross(e20, -e12)
-
     area2 = cross0.norm(dim=1).clamp(min=1e-12)  # 2 * face area
 
     cot0 = (e01 * (-e20)).sum(dim=1) / area2  # cot(angle at v0)
@@ -133,9 +130,6 @@ def geometric_edge_weights(
     Returns:
         W: (N, N) symmetric positive edge weights (zero where adj is zero).
     """
-    N = positions.size(0)
-    device = positions.device
-
     # Pairwise displacement and distance
     diff = positions.unsqueeze(1) - positions.unsqueeze(0)  # (N, N, 3)
     dist = diff.norm(dim=2).clamp(min=epsilon)  # (N, N)
@@ -208,8 +202,8 @@ def symmetric_normalised_laplacian(W: Tensor, epsilon: float = 1e-8) -> Tensor:
     D = W.sum(dim=1).clamp(min=epsilon)
     D_inv_sqrt = D.pow(-0.5)
     W_norm = D_inv_sqrt.unsqueeze(1) * W * D_inv_sqrt.unsqueeze(0)
-    I = torch.eye(W.size(0), device=W.device, dtype=W.dtype)
-    return I - W_norm
+    identity = torch.eye(W.size(0), device=W.device, dtype=W.dtype)
+    return identity - W_norm
 
 
 # ---------------------------------------------------------------------------
@@ -235,8 +229,6 @@ def discrete_curvatures(
         'shape_index': (N,) Koenderink shape index in [−1, 1]
         'curvedness': (N,) Koenderink curvedness ≥ 0
     """
-    N = positions.size(0)
-    device = positions.device
     result = {}
 
     if faces is not None:
@@ -349,7 +341,6 @@ def multiscale_diffusion_filters(
         filters: (K, N, N) diffusion filter bank.
     """
     eigenvalues, eigenvectors = torch.linalg.eigh(L)
-    VT = eigenvectors.T
 
     if isinstance(scales, list):
         scales = torch.tensor(scales, device=L.device, dtype=L.dtype)
@@ -455,8 +446,6 @@ def _angle_defect(
     """Gaussian curvature via angle defect: K_i = (2π − Σθ) / A_i."""
     V = positions.size(0)
     device = positions.device
-
-    v0, v1, v2 = positions[faces[:, 0]], positions[faces[:, 1]], positions[faces[:, 2]]
 
     angle_sum = torch.zeros(V, device=device, dtype=positions.dtype)
     for k in range(3):

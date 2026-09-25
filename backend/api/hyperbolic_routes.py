@@ -29,6 +29,7 @@ router = APIRouter(prefix="/hyperbolic", tags=["hyperbolic"])
 _state = {
     'positions': None,   # tensor (N, 2) Poincare disk positions
     'edges': None,       # list of [i, j]
+    'adj': None,         # dense (N, N), symmetric
     'labels': None,      # tensor (N,)
     'num_nodes': 0,
     'simulation': None,  # HyperbolicSimulation instance
@@ -81,7 +82,6 @@ def _make_hierarchical_graph(num_nodes: int):
     edges = []
     labels = [0] * num_nodes
 
-    # Assign nodes to communities
     for i in range(num_nodes):
         labels[i] = min(i // community_size, n_communities - 1)
 
@@ -94,7 +94,6 @@ def _make_hierarchical_graph(num_nodes: int):
         for i in range(1, len(nodes)):
             parent = nodes[torch.randint(0, i, (1,)).item()]
             edges.append([parent, nodes[i]])
-        # Add extra intra-community edges
         n_extra = max(1, len(nodes) // 3)
         for _ in range(n_extra):
             a = nodes[torch.randint(0, len(nodes), (1,)).item()]
@@ -244,28 +243,25 @@ def generate_graph(req: GraphRequest):
     else:
         raise HTTPException(400, f"Unknown graph_type: {req.graph_type}")
 
-    # Initialize Poincare disk positions
     positions = _init_poincare_positions(num_nodes)
     labels_tensor = torch.tensor(labels, dtype=torch.long)
 
-    # Build adjacency matrix for later use
     adj = torch.zeros(num_nodes, num_nodes)
     for i, j in edges:
         adj[i, j] = 1.0
         adj[j, i] = 1.0
 
-    # Generate simple node features (one-hot degree + position)
+    # Node features: raw degree and disk position
     degree = adj.sum(dim=1, keepdim=True)
     features = torch.cat([degree, positions], dim=1)  # (N, 3)
 
-    # Store state
     _state['positions'] = positions
     _state['edges'] = edges
+    _state['adj'] = adj
     _state['labels'] = labels_tensor
     _state['num_nodes'] = num_nodes
     _state['features'] = features
 
-    # Build response
     nodes = []
     for idx in range(num_nodes):
         nodes.append({
@@ -339,7 +335,6 @@ def simulate_step(req: SimStepRequest):
     sim = _state['simulation']
     pos, energy = sim.step(n_steps=req.n_steps)
 
-    # Update stored positions
     _state['positions'] = pos.clone()
 
     return {
@@ -387,12 +382,7 @@ def train_model(req: TrainRequest):
         num_nodes = _state['num_nodes']
         features = _state['features']
         labels = _state['labels']
-
-        # Build adjacency matrix
-        adj = torch.zeros(num_nodes, num_nodes)
-        for i, j in _state['edges']:
-            adj[i, j] = 1.0
-            adj[j, i] = 1.0
+        adj = _state['adj']
 
         num_classes = int(labels.max().item()) + 1
         use_attention = (req.layer_type == "gat")
@@ -434,7 +424,6 @@ def train_model(req: TrainRequest):
 
         _state['model'] = model
 
-        # Final evaluation
         model.eval()
         with torch.no_grad():
             logits = model(features, adj)

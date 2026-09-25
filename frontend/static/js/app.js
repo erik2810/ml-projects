@@ -1,192 +1,17 @@
 import { api } from './api.js';
 import { renderGraph, renderMiniGraph, renderFixedGraph, renderWLGraph, drawLossCurve } from './graph_viz.js';
+import { setLoading, log, initTabs, initSliders } from './components/shared.js';
+import { initGnnPanel } from './components/panels/gnn.js';
+import { initGeneratorPanel } from './components/panels/generator.js';
+import { renderGraphGrid } from './components/renderers/graph_grid.js';
 
-// ---------------------------------------------------------------------------
-// Tab switching
-// ---------------------------------------------------------------------------
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => {
-      b.classList.remove('active');
-      b.setAttribute('aria-selected', 'false');
-    });
-    btn.classList.add('active');
-    btn.setAttribute('aria-selected', 'true');
-
-    document.querySelectorAll('.panel').forEach(p => {
-      p.classList.remove('active');
-      p.hidden = true;
-    });
-    const target = document.getElementById(`panel-${btn.dataset.tab}`);
-    if (target) {
-      target.classList.add('active');
-      target.hidden = false;
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Slider value display
-// ---------------------------------------------------------------------------
-document.querySelectorAll('.slider-field input[type="range"]').forEach(slider => {
-  const output = slider.parentElement.querySelector('.slider-value');
-  if (output) {
-    slider.addEventListener('input', () => {
-      output.textContent = parseFloat(slider.value).toFixed(
-        slider.step.includes('.') ? slider.step.split('.')[1].length : 0
-      );
-    });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function setLoading(btn, loading) {
-  btn.classList.toggle('loading', loading);
-  btn.disabled = loading;
-}
-
-function log(outputId, msg) {
-  const el = document.getElementById(outputId);
-  if (!el) return;
-  el.textContent += msg + '\n';
-  el.scrollTop = el.scrollHeight;
-}
-
-let gnnGraphHandle = null;
-let gnnGraphData = null;
-
-// ---------------------------------------------------------------------------
-// GNN Panel
-// ---------------------------------------------------------------------------
-document.getElementById('btn-load-graph')?.addEventListener('click', async function () {
-  setLoading(this, true);
-  try {
-    const data = await api.loadKarateClub();
-    gnnGraphData = data;
-    document.getElementById('load-status').textContent = `${data.num_nodes} nodes, ${data.num_edges} edges`;
-    document.getElementById('load-status').className = 'status-text success';
-    document.getElementById('btn-train-gnn').disabled = false;
-
-    const container = document.getElementById('gnn-graph-container');
-    // convert edge pairs that include both directions — deduplicate
-    const edgeSet = new Set();
-    const edges = [];
-    for (const [s, t] of data.edges) {
-      const key = Math.min(s, t) + ',' + Math.max(s, t);
-      if (!edgeSet.has(key)) {
-        edgeSet.add(key);
-        edges.push([s, t]);
-      }
-    }
-
-    if (gnnGraphHandle) gnnGraphHandle.destroy();
-    gnnGraphHandle = renderGraph(container, {
-      nodes: Array.from({ length: data.num_nodes }, (_, i) => ({ id: i })),
-      edges,
-      labels: data.labels,
-    });
-  } catch (e) {
-    document.getElementById('load-status').textContent = e.message;
-    document.getElementById('load-status').className = 'status-text error';
-  }
-  setLoading(this, false);
-});
-
-document.getElementById('btn-train-gnn')?.addEventListener('click', async function () {
-  setLoading(this, true);
-  const statusLog = document.getElementById('gnn-status-log');
-  statusLog.textContent = 'Training...\n';
-
-  try {
-    const params = {
-      layer_type: document.getElementById('gnn-layer-type').value.toLowerCase(),
-      hidden_dim: +document.getElementById('gnn-hidden-dim').value,
-      num_layers: +document.getElementById('gnn-num-layers').value,
-      lr: +document.getElementById('gnn-lr').value,
-      epochs: +document.getElementById('gnn-epochs').value,
-    };
-    const result = await api.trainGNN(params);
-    log('gnn-status-log', `Done — loss: ${result.final_loss}, acc: ${result.final_accuracy}`);
-
-    // draw loss curve
-    const container = document.getElementById('gnn-loss-container');
-    container.innerHTML = '<canvas width="280" height="160"></canvas>';
-    const canvas = container.querySelector('canvas');
-    drawLossCurve(canvas, result.loss_curve);
-
-    document.getElementById('predict-fieldset').disabled = false;
-  } catch (e) {
-    log('gnn-status-log', `Error: ${e.message}`);
-  }
-  setLoading(this, false);
-});
-
-document.getElementById('btn-predict-gnn')?.addEventListener('click', async function () {
-  setLoading(this, true);
-  try {
-    const raw = document.getElementById('gnn-node-ids').value.trim();
-    const nodeIds = raw ? raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)) : null;
-    const result = await api.predictGNN(nodeIds);
-
-    const predDiv = document.getElementById('gnn-predictions');
-    predDiv.innerHTML = `<div style="margin-bottom:8px;color:var(--accent);font-weight:500">Accuracy: ${(result.accuracy * 100).toFixed(1)}%</div>`;
-    for (const p of result.predictions) {
-      predDiv.innerHTML += `<div class="pred-row"><span class="pred-label">Node ${p.node}</span><span class="pred-value">${p.predicted} (${(p.confidence * 100).toFixed(0)}%)</span></div>`;
-    }
-
-    if (gnnGraphHandle && gnnGraphData) {
-      const preds = new Array(gnnGraphData.num_nodes).fill(-1);
-      for (const p of result.predictions) preds[p.node] = p.predicted;
-      gnnGraphHandle.updatePredictions(preds);
-    }
-  } catch (e) {
-    log('gnn-status-log', `Predict error: ${e.message}`);
-  }
-  setLoading(this, false);
-});
-
-// ---------------------------------------------------------------------------
-// Generator Panel
-// ---------------------------------------------------------------------------
-document.getElementById('btn-train-gen')?.addEventListener('click', async function () {
-  setLoading(this, true);
-  log('gen-status-log', 'Training generator...');
-  try {
-    const params = {
-      hidden_dim: +document.getElementById('gen-hidden-dim').value,
-      lr: +document.getElementById('gen-lr').value,
-      epochs: +document.getElementById('gen-epochs').value,
-    };
-    const result = await api.trainGenerator(params);
-    log('gen-status-log', `Done — final loss: ${result.final_loss}`);
-
-    const container = document.getElementById('gen-loss-container');
-    container.innerHTML = '<canvas width="240" height="120"></canvas>';
-    drawLossCurve(container.querySelector('canvas'), result.loss_curve);
-  } catch (e) {
-    log('gen-status-log', `Error: ${e.message}`);
-  }
-  setLoading(this, false);
-});
-
-document.getElementById('btn-generate')?.addEventListener('click', async function () {
-  setLoading(this, true);
-  try {
-    const params = {
-      num_nodes: +document.getElementById('cond-nodes').value,
-      density: +document.getElementById('cond-density').value,
-      clustering: +document.getElementById('cond-clustering').value,
-      num_samples: +document.getElementById('gen-num-samples').value,
-    };
-    const result = await api.generateGraphs(params);
-    renderGraphGrid('gen-graph-grid', result.graphs);
-  } catch (e) {
-    log('gen-status-log', `Generate error: ${e.message}`);
-  }
-  setLoading(this, false);
-});
+// Bootstrap shared UI and the panel modules that have been extracted.
+// Remaining panels below still live inline and follow the same pattern;
+// they import setLoading / log / renderGraphGrid from the shared modules.
+initTabs();
+initSliders();
+initGnnPanel();
+initGeneratorPanel();
 
 // ---------------------------------------------------------------------------
 // VAE / Diffusion Panel
@@ -407,42 +232,8 @@ document.getElementById('btn-analyze-spatial')?.addEventListener('click', async 
   setLoading(this, false);
 });
 
-// ---------------------------------------------------------------------------
-// Graph grid rendering (2D — for GNN / Generator / VAE panels)
-// ---------------------------------------------------------------------------
-function renderGraphGrid(containerId, graphs) {
-  const grid = document.getElementById(containerId);
-  if (!grid) return;
-  grid.innerHTML = '';
-
-  graphs.forEach((g, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'graph-cell';
-    grid.appendChild(cell);
-
-    // deduplicate edges (API returns both directions)
-    const edgeSet = new Set();
-    const edges = [];
-    for (const [s, t] of g.edges) {
-      const key = Math.min(s, t) + ',' + Math.max(s, t);
-      if (!edgeSet.has(key)) {
-        edgeSet.add(key);
-        edges.push([s, t]);
-      }
-    }
-
-    renderMiniGraph(cell, {
-      nodes: Array.from({ length: g.num_nodes }, (_, j) => ({ id: j })),
-      edges,
-    });
-
-    const label = document.createElement('div');
-    label.className = 'graph-cell-label';
-    label.textContent = `n=${g.num_nodes} e=${g.num_edges} d=${g.density}`;
-    cell.appendChild(label);
-  });
-}
-
+// renderGraphGrid lives in components/renderers/graph_grid.js and is
+// imported at the top of this module.
 
 // ---------------------------------------------------------------------------
 // Spatial 3D grid rendering (isometric projection)

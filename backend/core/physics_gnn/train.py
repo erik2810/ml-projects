@@ -8,19 +8,18 @@ Provides:
     - Integration with the existing SpatialGraph data format
 """
 
+import time
+from dataclasses import dataclass
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import time
-import math
-from typing import Optional
-from dataclasses import dataclass, field
 
 from .models import PhysicsInformedGNN, PhysicsInformedGraphGenerator
-
 
 # ---------------------------------------------------------------------------
 # Training configuration

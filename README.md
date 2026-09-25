@@ -41,32 +41,68 @@ The web UI has four panels: GNN Explorer, Graph Generator, VAE/Diffusion, and **
 ## Project structure
 
 ```
-backend/
-  core/
-    graph_utils.py          # graph ops (adj normalization, random graphs, clustering)
-    gnn/
-      layers.py             # GCNLayer, GATLayer — dense message passing
-      model.py              # NodeClassifier, GraphClassifier, Karate Club data
-    generator/
-      model.py              # Conditional graph VAE (CVAE)
-    graphvae/
-      model.py              # Graph VAE + discrete diffusion
-    spatial/
-      graph3d.py            # SpatialGraph dataclass, SWC I/O
-      synthetic.py          # Stochastic 3D tree + neuron morphology generators
-      metrics.py            # TED, Sholl analysis, Strahler, spatial MMD
-      tree_gen.py           # Autoregressive spatial tree VAE
-      diffusion3d.py        # Joint discrete-continuous diffusion
-    benchmarks/
-      evaluation.py         # Unified benchmark pipeline
-  api/                      # FastAPI route handlers (incl. spatial endpoints)
-  app.py                    # FastAPI entry point
+core/                        # research framework (Lightning-ish, no Lightning dep)
+  models/base.py             # BaseModel: training_step, validation_step, configure_optimizers
+  data/base.py               # BaseDataset: train_loader, val_loader, test_loader
+  training/trainer.py        # Trainer with callback hooks
+  training/callbacks.py      # Callback, EarlyStopping, Checkpoint, ProgressLogger
+  config/schema.py           # Pydantic ExperimentConfig / ModelConfig / DatasetConfig
+  config/loader.py           # YAML (optional) / JSON experiment loader
+  registry.py                # @register decorator for models and datasets
+  cli.py                     # `python -m core.cli train|list|scaffold`
 
-frontend/                   # browser UI with 3D isometric tree visualization
-demo/                       # static GitHub Pages demo
-scripts/                    # standalone training scripts
-tests/                      # pytest suite (32+ tests including spatial modules)
+algorithms/                  # framework-native model + dataset pairs
+  gnn/                       # GCN / GAT on Karate Club (node classification)
+  graphvae/                  # Graph VAE + discrete diffusion
+  generator/                 # Conditional graph generator (CVAE)
+  hyperbolic/                # Hyperbolic GNN + link prediction (Riemannian + Euclidean opts)
+  physics_gnn/               # Physics-informed GNN on a spring mesh
+
+experiments/configs/         # YAML experiment definitions (karate_gcn.yaml, tree_hyperbolic.yaml, ...)
+
+backend/                     # original, still-live implementations + FastAPI server
+  core/                      # graph_utils, gnn, generator, graphvae, spatial, benchmarks
+  api/                       # FastAPI route handlers (incl. spatial endpoints)
+  app.py                     # FastAPI entry point
+
+frontend/                    # browser UI (ES modules under static/js/components/)
+demo/                        # static GitHub Pages demo
+scripts/                     # standalone training scripts
+tests/                       # pytest suite (160+ tests incl. core framework, algorithms, spatial)
 ```
+
+
+## Framework at a glance
+
+A small, Lightning-inspired layer that standardises training across the
+algorithms above. Define a model by subclassing `BaseModel` and implementing
+`training_step` (plus optional `validation_step` / `configure_optimizers`);
+pair it with a `BaseDataset`; declare the experiment in YAML:
+
+```yaml
+# experiments/configs/karate_gcn.yaml
+name: karate_gcn
+model:
+  name: gcn_node
+  params: { in_features: 18, num_classes: 2, hidden: 16, n_layers: 2, lr: 0.01 }
+dataset:
+  name: karate_club
+  params: { per_class: 4, seed: 0 }
+training:
+  max_epochs: 80
+  early_stopping: { monitor: val_loss, patience: 15, mode: min }
+```
+
+Run via the CLI:
+
+```bash
+python -m core.cli list                                       # list registered models/datasets
+python -m core.cli train experiments/configs/karate_gcn.yaml  # train + checkpoint
+python -m core.cli scaffold my_model                          # emit a starter template
+```
+
+Multi-optimizer support (e.g. `[RiemannianAdam, AdamW]` for hyperbolic
+models with mixed manifold/Euclidean parameters) is built in.
 
 
 ## The models
@@ -169,11 +205,25 @@ results = run_baseline_comparison(
 ## Tests
 
 ```bash
-pip install pytest
+pip install -e ".[dev]"
 pytest
 ```
 
-Covers all modules including spatial graph operations, synthetic generators, metrics, VAE forward/generate, and diffusion forward/sample.
+Covers all modules including the core framework (Trainer, callbacks,
+registry, CLI), framework-native algorithm wrappers, spatial graph
+operations, synthetic generators, metrics, VAE forward/generate, and
+diffusion forward/sample.
+
+## Development
+
+CI runs pytest across Python 3.10–3.12 and ruff on `core/`, `algorithms/`,
+`experiments/`. To get the same checks locally:
+
+```bash
+pip install -e ".[dev]"
+pip install pre-commit
+pre-commit install
+```
 
 
 ## Technical notes
